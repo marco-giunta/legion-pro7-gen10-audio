@@ -1,4 +1,4 @@
-diff '--color=auto' -u -r -N linux-6.18/drivers/acpi/scan.c patched/drivers/acpi/scan.c
+diff -u -r -N linux-6.18/drivers/acpi/scan.c patched/drivers/acpi/scan.c
 --- linux-6.18/drivers/acpi/scan.c	2025-12-01 00:42:10.000000000 +0200
 +++ patched/drivers/acpi/scan.c	2025-12-01 08:37:20.978785341 +0200
 @@ -1760,6 +1760,7 @@
@@ -9,7 +9,7 @@ diff '--color=auto' -u -r -N linux-6.18/drivers/acpi/scan.c patched/drivers/acpi
  		{"BSG1160", },
  		{"BSG2150", },
  		{"CSC3551", },
-diff '--color=auto' -u -r -N linux-6.18/drivers/platform/x86/serial-multi-instantiate.c patched/drivers/platform/x86/serial-multi-instantiate.c
+diff -u -r -N linux-6.18/drivers/platform/x86/serial-multi-instantiate.c patched/drivers/platform/x86/serial-multi-instantiate.c
 --- linux-6.18/drivers/platform/x86/serial-multi-instantiate.c	2025-12-01 00:42:10.000000000 +0200
 +++ patched/drivers/platform/x86/serial-multi-instantiate.c	2025-12-01 08:37:46.204462486 +0200
 @@ -395,11 +395,21 @@
@@ -34,7 +34,7 @@ diff '--color=auto' -u -r -N linux-6.18/drivers/platform/x86/serial-multi-instan
  	{ "BSG1160", (unsigned long)&bsg1160_data },
  	{ "BSG2150", (unsigned long)&bsg2150_data },
  	{ "CSC3551", (unsigned long)&cs35l41_hda },
-diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/realtek/alc269.c patched/sound/hda/codecs/realtek/alc269.c
+diff -u -r -N linux-6.18/sound/hda/codecs/realtek/alc269.c patched/sound/hda/codecs/realtek/alc269.c
 --- linux-6.18/sound/hda/codecs/realtek/alc269.c	2025-12-01 00:42:10.000000000 +0200
 +++ patched/sound/hda/codecs/realtek/alc269.c	2025-12-01 08:39:32.005906670 +0200
 @@ -2964,6 +2964,16 @@
@@ -96,7 +96,7 @@ diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/realtek/alc269.c patche
  	SND_PCI_QUIRK(0x17aa, 0x3977, "IdeaPad S210", ALC283_FIXUP_INT_MIC),
  	SND_PCI_QUIRK(0x17aa, 0x3978, "Lenovo B50-70", ALC269_FIXUP_DMIC_THINKPAD_ACPI),
  	SND_PCI_QUIRK(0x17aa, 0x3bf8, "Quanta FL1", ALC269_FIXUP_PCM_44K),
-diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/Kconfig patched/sound/hda/codecs/side-codecs/Kconfig
+diff -u -r -N linux-6.18/sound/hda/codecs/side-codecs/Kconfig patched/sound/hda/codecs/side-codecs/Kconfig
 --- linux-6.18/sound/hda/codecs/side-codecs/Kconfig	2025-12-01 00:42:10.000000000 +0200
 +++ patched/sound/hda/codecs/side-codecs/Kconfig	2025-12-01 08:39:50.449312649 +0200
 @@ -126,3 +126,24 @@
@@ -124,7 +124,7 @@ diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/Kconfig pat
 +
 +comment "Set to Y if you want auto-loading the side codec driver"
 +	depends on SND_HDA=y && SND_HDA_SCODEC_AW88399_I2C=m
-diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/Makefile patched/sound/hda/codecs/side-codecs/Makefile
+diff -u -r -N linux-6.18/sound/hda/codecs/side-codecs/Makefile patched/sound/hda/codecs/side-codecs/Makefile
 --- linux-6.18/sound/hda/codecs/side-codecs/Makefile	2025-12-01 00:42:10.000000000 +0200
 +++ patched/sound/hda/codecs/side-codecs/Makefile	2025-12-01 08:40:08.385968381 +0200
 @@ -13,6 +13,8 @@
@@ -142,10 +142,10 @@ diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/Makefile pa
  obj-$(CONFIG_SND_HDA_SCODEC_TAS2781_SPI) += snd-hda-scodec-tas2781-spi.o
 +obj-$(CONFIG_SND_HDA_SCODEC_AW88399) += snd-hda-scodec-aw88399.o
 +obj-$(CONFIG_SND_HDA_SCODEC_AW88399_I2C) += snd-hda-scodec-aw88399-i2c.o
-diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda.c patched/sound/hda/codecs/side-codecs/aw88399_hda.c
+diff -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda.c patched/sound/hda/codecs/side-codecs/aw88399_hda.c
 --- linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda.c	1970-01-01 02:00:00.000000000 +0200
 +++ patched/sound/hda/codecs/side-codecs/aw88399_hda.c	2025-12-01 08:41:02.325627224 +0200
-@@ -0,0 +1,474 @@
+@@ -0,0 +1,475 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +//
 +// aw88399_hda.c -- AW88399 HDA side codec driver
@@ -621,7 +621,7 @@ diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda
 +MODULE_DESCRIPTION("HDA AW88399 driver");
 +MODULE_AUTHOR("Lyapsus");
 +MODULE_LICENSE("GPL");
-diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda.h patched/sound/hda/codecs/side-codecs/aw88399_hda.h
+diff -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda.h patched/sound/hda/codecs/side-codecs/aw88399_hda.h
 --- linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda.h	1970-01-01 02:00:00.000000000 +0200
 +++ patched/sound/hda/codecs/side-codecs/aw88399_hda.h	2025-12-01 08:41:10.558881844 +0200
 @@ -0,0 +1,48 @@
@@ -673,7 +673,7 @@ diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda
 +extern const struct dev_pm_ops aw88399_hda_pm_ops;
 +
 +#endif /* __AW88399_HDA_H__ */
-diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c patched/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c
+diff -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c patched/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c
 --- linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	1970-01-01 02:00:00.000000000 +0200
 +++ patched/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	2025-12-01 08:41:19.592123355 +0200
 @@ -0,0 +1,62 @@
@@ -739,7 +739,7 @@ diff '--color=auto' -u -r -N linux-6.18/sound/hda/codecs/side-codecs/aw88399_hda
 +MODULE_AUTHOR("Lyapsus");
 +MODULE_LICENSE("GPL");
 +MODULE_IMPORT_NS("SND_HDA_SCODEC_AW88399");
-diff '--color=auto' -u -r -N linux-6.18/sound/soc/codecs/aw88399.c patched/sound/soc/codecs/aw88399.c
+diff -u -r -N linux-6.18/sound/soc/codecs/aw88399.c patched/sound/soc/codecs/aw88399.c
 --- linux-6.18/sound/soc/codecs/aw88399.c	2025-12-01 00:42:10.000000000 +0200
 +++ patched/sound/soc/codecs/aw88399.c	2025-12-01 08:41:39.898566441 +0200
 @@ -14,6 +14,7 @@
@@ -1086,7 +1086,7 @@ diff '--color=auto' -u -r -N linux-6.18/sound/soc/codecs/aw88399.c patched/sound
  	{ },
  };
  MODULE_DEVICE_TABLE(acpi, aw88399_acpi_match);
-diff '--color=auto' -u -r -N linux-6.18/sound/soc/codecs/aw88399.h patched/sound/soc/codecs/aw88399.h
+diff -u -r -N linux-6.18/sound/soc/codecs/aw88399.h patched/sound/soc/codecs/aw88399.h
 --- linux-6.18/sound/soc/codecs/aw88399.h	2025-12-01 00:42:10.000000000 +0200
 +++ patched/sound/soc/codecs/aw88399.h	2025-12-01 08:41:42.841865704 +0200
 @@ -415,18 +415,17 @@
