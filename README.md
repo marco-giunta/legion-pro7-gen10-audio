@@ -27,7 +27,7 @@ I do still use AI for brainstorming or assistance with bugs.
 ---
 
 ## Quick start
-***Patch compatibility:*** this section assumes you are a Fedora Linux user who wishes to install the patched kernel prepackaged as an RPM. If you use a different Linux distro or do not wish to use Fedora's tools, please check the FAQ section below for instructions on how to patch the Linux kernel yourself.
+***Patch compatibility:*** this section assumes you are a Fedora Linux user who wishes to install the patched kernel prepackaged as an RPM. If you use a different Linux distro or prefer to compile your own kernel RPMs, please check the following sections for instructions on how to patch the Linux kernel yourself.
 
 ### Automated Installation
 The easiest way to install the patched kernel is to run the automated wizard:
@@ -198,7 +198,8 @@ CONFIG_SND_SOC_AMD_PS_MACH=m
 
 </details>
 
-If you wish to compile your own kernel under Fedora Linux, I recommend using my [Fedora specific self-compile guide](docs/self_compile.md) over the original, as it will make the process much easier: thanks to `fedpkg`, there is no need to manually pick kernel parameters, setup NVIDIA drivers, generate the initramfs, update the grub menu, or copy the files needed to install the patched kernel.
+### Can I build my own kernel RPMs on Fedora?
+If you wish to compile your own kernel under Fedora Linux, I recommend using my [Fedora specific self-compile guide](docs/self_compile.md) over the [original](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga), as it will make the process much easier: thanks to `fedpkg`, there is no need to manually pick kernel parameters, setup NVIDIA drivers, generate the initramfs, update the grub menu, or copy the files needed to install the patched kernel.
 
 There exist multiple ways to compile the Linux kernel under Fedora (with some guides you can find online based on older methods); I recommend the approach detailed in my guide because it's the most up to date, high level, and beginner-friendly, as well as being based on the latest official method recommended by the Fedora docs themselves (see the guide for Fedora docs sources).
 
