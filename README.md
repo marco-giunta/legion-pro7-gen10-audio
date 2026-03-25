@@ -96,7 +96,7 @@ sudo dnf install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfre
 sudo dnf install akmod-nvidia
 ```
 3. **Obtain the kernel RPMs**
-- Head to the [releases section](link) and download the latest kernel available. Alternatively, you can compile your own patched kernel in RPM format using my [self compile guide](docs/self_compile.md).
+- Head to the [releases section](https://github.com/marco-giunta/legion-pro7-gen10-audio/releases) and download the latest kernel available. Alternatively, you can compile your own patched kernel in RPM format using my [self compile guide](docs/self_compile.md).
 - *Optional but recommended:* download the corresponding sha256 checksum and check the integrity of the downloaded file:
 ```bash
 sha256sum -c legion-pro7-audio-*.tar.gz.sha256
