@@ -45,6 +45,7 @@ After the script is done, reboot; your system should automatically boot the patc
 If you read [the original guide](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga), you'll see its post-install instructions involve setting a certain kernel boot parameter and copying some `ucm2` files. This is *not* needed here (and won't work on the AMD model anyway)! I take a different approach with my patch, aimed at making it work out of the box. The only required post install step is ensuring you select the correct profile, as stated above.
 
 ### Manual installation
+If you'd rather not run an automated install script, follow the steps below to install everything manually.
 1. **Install the firmware**
 - [Download the `aw88399_acf.bin` file from this repo's `firmware` folder](firmware/aw88399/aw88399_acf.bin); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in the [firmware extraction guide](docs/firmware_extraction.md).
 - *Optional but recommended:* [Download the `aw88399_acf.bin.sha256` file from this repo's `firmware` folder](firmware/aw88399/aw88399_acf.bin.sha256), put it in the same folder as the downloaded `aw88399_acf.bin`, and check the integrity of the binary:
