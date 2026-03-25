@@ -115,7 +115,7 @@ jobs:
               uses: softprops/action-gh-release@v2
               with:
                 tag_name: "kernel-${{ env.VERSION }}"
-                name: "Patched Kernel ${{ env.VERSION }}"
+                name: "v${{ env.VERSION }}"
                 body: |
                     Automated build of the Legion Pro 7/7i Gen 10 patched kernel RPMs.
 
