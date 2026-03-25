@@ -1,0 +1,137 @@
+{
+    "input": {
+        "blocklist": [],
+        "compressor#0": {
+            "attack": 20.0,
+            "boost-amount": 6.0,
+            "boost-threshold": -72.0,
+            "bypass": false,
+            "dry": -80.01,
+            "hpf-frequency": 10.0,
+            "hpf-mode": "Off",
+            "input-gain": 0.0,
+            "input-to-link": 0.0,
+            "input-to-sidechain": 0.0,
+            "knee": -6.0,
+            "link-to-input": 0.0,
+            "link-to-sidechain": 0.0,
+            "lpf-frequency": 20000.0,
+            "lpf-mode": "Off",
+            "makeup": 0.0,
+            "mode": "Upward",
+            "output-gain": 0.0,
+            "ratio": 3.0,
+            "release": 100.0,
+            "release-threshold": -80.01,
+            "sidechain": {
+                "lookahead": 0.0,
+                "mode": "RMS",
+                "preamp": 0.0,
+                "reactivity": 10.0,
+                "source": "Middle",
+                "stereo-split-source": "Left/Right",
+                "type": "Feed-forward"
+            },
+            "sidechain-to-input": 0.0,
+            "sidechain-to-link": 0.0,
+            "stereo-split": false,
+            "threshold": -22.0,
+            "wet": 0.0
+        },
+        "echo_canceller#0": {
+            "bypass": false,
+            "echo-canceller": {
+                "automatic-gain-control": false,
+                "enable": true,
+                "enforce-high-pass": true,
+                "mobile-mode": false
+            },
+            "high-pass": {
+                "enable": true,
+                "full-band": true
+            },
+            "input-gain": 0.0,
+            "noise-suppression": {
+                "enable": true,
+                "level": "High"
+            },
+            "output-gain": 0.0
+        },
+        "equalizer#0": {
+            "balance": 0.0,
+            "bypass": false,
+            "input-gain": 0.0,
+            "left": {
+                "band0": {
+                    "frequency": 2500.0,
+                    "gain": 2.75,
+                    "mode": "RLC (BT)",
+                    "mute": false,
+                    "q": 0.7,
+                    "slope": "x1",
+                    "solo": false,
+                    "type": "Bell",
+                    "width": 4.0
+                },
+                "band1": {
+                    "frequency": 5000.0,
+                    "gain": 1.5,
+                    "mode": "RLC (BT)",
+                    "mute": false,
+                    "q": 0.7,
+                    "slope": "x1",
+                    "solo": false,
+                    "type": "Bell",
+                    "width": 4.0
+                }
+            },
+            "mode": "IIR",
+            "num-bands": 2,
+            "output-gain": 0.0,
+            "pitch-left": 0.0,
+            "pitch-right": 0.0,
+            "right": {
+                "band0": {
+                    "frequency": 2500.0,
+                    "gain": 2.75,
+                    "mode": "RLC (BT)",
+                    "mute": false,
+                    "q": 0.7,
+                    "slope": "x1",
+                    "solo": false,
+                    "type": "Bell",
+                    "width": 4.0
+                },
+                "band1": {
+                    "frequency": 5000.0,
+                    "gain": 1.5,
+                    "mode": "RLC (BT)",
+                    "mute": false,
+                    "q": 0.7,
+                    "slope": "x1",
+                    "solo": false,
+                    "type": "Bell",
+                    "width": 4.0
+                }
+            },
+            "split-channels": false
+        },
+        "plugins_order": [
+            "echo_canceller#0",
+            "rnnoise#0",
+            "equalizer#0",
+            "compressor#0"
+        ],
+        "rnnoise#0": {
+            "bypass": false,
+            "enable-vad": true,
+            "input-gain": 0.0,
+            "model-name": "\"\"",
+            "output-gain": 0.0,
+            "release": 60.0,
+            "use-standard-model": true,
+            "vad-thres": 30.0,
+            "wet": 0.0
+        }
+    }
+}

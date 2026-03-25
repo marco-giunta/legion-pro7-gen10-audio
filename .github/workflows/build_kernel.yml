@@ -1,0 +1,141 @@
+name: Build Patched Kernel RPMs
+
+on:
+    workflow_dispatch:
+        inputs:
+            fedora_version:
+                description: 'Fedora version to build for (e.g. 43)'
+                required: true
+                default: '43'
+            kernel_version:
+                description: 'Specific kernel to use via koji (e.g. kernel-6.19.9-200.fc43)'
+                required: false
+                default: ''
+            build_id:
+                description: 'Custom kernel build ID suffix (no spaces, no leading dot)'
+                required: true
+                default: 'legion'
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        container:
+            image: fedora:${{ github.event.inputs.fedora_version || '43'}}
+
+        env:
+            FEDORA_VERSION: ${{ github.event.inputs.fedora_version || '43'}}
+            KERNEL_VERSION: ${{ github.event.inputs.kernel_version || ''}}
+            BUILD_ID:       ${{ github.event.inputs.build_id || 'legion'}}
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install build tools
+              run: |
+                dnf install -y \
+                    fedpkg koji git ccache
+            - name: Obtain kernel source (fedpkg/koji)
+              run: |
+                if [ -n "${KERNEL_VERSION}" ]; then
+                    echo "Downloading specific kernel via koji: ${KERNEL_VERSION}"
+                    koji download-build --arch=src "${KERNEL_VERSION}"
+
+                    SRC_RPM=$(ls kernel-*.src.rpm)
+                    echo "Extracting ${SRC_RPM}"
+                    rpm -ivh "${SRC_RPM}"
+
+                    mkdir -p kernel
+                    cp -r ~/rpmbuild/SOURCES/. kernel/
+                    cp -r ~/rpmbuild/SPECS/.   kernel/
+                else
+                    echo "Cloning latest kernel via fedpkg (branch f${FEDORA_VERSION})"
+                    fedpkg clone -a kernel
+                    cd kernel
+                    fedpkg switch-branch "f${FEDORA_VERSION}"
+                fi
+            - name: Install kernel build dependencies
+              run: |
+                cd kernel
+                dnf builddep -y kernel.spec
+            - name: Concatenate audio + mediatek patches into linux-kernel-test.patch
+              run: |
+                AUDIO_PATCH=$(ls patches/audio/*.patch 2>/dev/null | tail -1)
+                MT_PATCH=$(ls patches/mt7927/*.patch 2>/dev/null)
+
+                if [ -z "${AUDIO_PATCH}" ]; then
+                    echo "ERROR: No audio patch found under patches/audio/"
+                    exit 1
+                fi
+                if [ -z "${MT_PATCH}" ]; then
+                    echo "ERROR: No mediatek patch found under patches/mt7927/"
+                    exit 1
+                fi
+
+                echo "Audio patch: ${AUDIO_PATCH}"
+                echo "Mediatek patch: ${MT_PATCH}"
+
+                cat "${AUDIO_PATCH}" "${MT_PATCH}" > kernel/linux-kernel-test.patch
+                echo "Combined patch written to kernel/linux-kernel-test.patch"
+            - name: Set kernel-local config parameters
+              run: |
+                printf 'CONFIG_SND_HDA_SCODEC_AW88399=m\nCONFIG_SND_HDA_SCODEC_AW88399_I2C=m\n' >> kernel/kernel-local
+                echo "aw88399 kernel parameters added to kernel-local"
+            - name: Set custom buildid in kernel.spec
+              run: |
+                sed -i \
+                  's|^#\s*define buildid.*|%define buildid .'"${BUILD_ID}"'|' \
+                  kernel/kernel.spec
+                echo "buildid set to .${BUILD_ID}"
+                grep 'define buildid' kernel/kernel.spec
+            - name: Build the kernel RPMs
+              run: |
+                cd kernel
+                fedpkg local --without debug --with ccache
+            - name: Collect relevant RPMs into release_rpms/
+              run: |
+                mkdir -p release_rpms
+                cp kernel/x86_64/kernel-[0-9]*.rpm release_rpms/
+                cp kernel/x86_64/kernel-core-*.rpm release_rpms/
+                cp kernel/x86_64/kernel-modules-*.rpm release_rpms/
+                cp kernel/x86_64/kernel-devel-*.rpm release_rpms/
+                ls -lh release_rpms/
+            - name: Create release tarball and sha256 checksum
+              run: |
+                CORE=$(ls release_rpms/kernel-core-*.rpm | head -1)
+                RELEASE_VER=$(rpm -qp --queryformat '%{VERSION}-%{RELEASE}' "${CORE}")
+                ARCHIVE="legion-pro7-audio-${RELEASE_VER}.tar.gz"
+
+                tar czf "${ARCHIVE}" -C release_rpms .
+                sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256"
+
+                echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+                echo "VERSION=${RELEASE_VER}" >> "$GITHUB_ENV"
+                echo "Created ${ARCHIVE}"
+            - name: Create github release
+              uses: softprops/action-gh-release@v2
+              with:
+                tag_name: "kernel-${{ env.VERSION }}"
+                name: "Patched Kernel ${{ env.VERSION }}"
+                body: |
+                    Automated build of the Legion Pro 7/7i Gen 10 patched kernel RPMs.
+
+                    **Fedora version:** ${{ env.FEDORA_VERSION }}
+
+                    ### Contents
+                    `legion-pro7-audio-*.tar.gz`: tarball of all required RPMs
+                    `legion-pro7-audio-*.tar.gz.sha256`: SHA-256 checksum
+
+                    ### Quick install
+                    ```bash
+                    sha256sum -c legion-pro7-audio-*.tar.gz.sha256
+                    tar xzf legion-pro7-audio-*.tar.gz
+                    sudo dnf install --nogpgcheck kernel-*.rpm kernel-core-*.rpm kernel-modules-*.rpm kernel-devel-*.rpm
+                    ```
+                    Please refer to the main README.md for more detailed information (including pre- and post-install info).
+                files: |
+                    ${{ env.ARCHIVE }}
+                    ${{ env.ARCHIVE }}.sha256
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
