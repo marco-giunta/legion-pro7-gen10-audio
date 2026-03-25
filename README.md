@@ -20,7 +20,7 @@ This work builds upon the [original Intel audio fix](https://github.com/nadimkob
 - **easyeffects profile to tackle the echoing jack**
 
 ***AI disclaimer:*** Especially in the earlier stages of this project, I relied on claude.ai for help with things I didn't fully understand. As I learned more about Linux and audio, I became more confident and less reliant on those tools. I can attest that all the code I added to the original patch was written by myself based on preexisting Linux code and documentation. Likewise, the guides and tools in this repo were written and tested by myself.
-I do still use AI for brainstorming or assistance with bugs.
+I do still use AI for brainstorming or assistance with bugs; for example, Claude helped me fix/improve some parts of the github actions pipeline and the install script.
 
 ***Responsibility disclaimer:*** Although I tested everything on my own hardware and at my own risk, and can attest everything works, this software is provided *as is*. Use it at your own risk; I take no responsibility for any damage or issues that may occur.
 
@@ -216,7 +216,7 @@ Regular Fedora updates won't affect the custom kernel. However, when new kernel 
 See the [Firmware Extraction Guide](docs/firmware_extraction.md) for details on how aw88399_acf.bin was extracted from the Windows driver, and how you can extract it yourself if you wish to do so.
 
 ### How do I know this is safe?
-- All builds are automated via [this GitHub Actions pipeline](.github/workflows/build_kernel.yml); the RPMs available here were *not* uploaded manually by me.
+- All builds are automated via [this GitHub Actions pipeline](.github/workflows/build_kernel.yml); the RPMs available here were *not* uploaded manually by me. You can check the building process in detail by clicking on the *Actions* button at the top of the page, or by clicking [here](https://github.com/marco-giunta/legion-pro7-gen10-audio/actions).
 - Patches are publicly visible in [`patches/`](patches/).
 - You can [build the patched kernel yourself](docs/self_compile.md) to verify.
 
