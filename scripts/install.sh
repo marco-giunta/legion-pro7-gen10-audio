@@ -68,8 +68,10 @@ require_cmd() {
 
 # File managing helpers
 download() {
-    # download <url> <dest>
-    wget -P "$2" "$1"
+    # download <url> <dest_dir>
+    local filename
+    filename=$(basename "$1")
+    curl -fL --progress-bar "$1" -o "$2/$filename"
 }
 
 cleanup() {
@@ -89,7 +91,6 @@ echo
 
 require_fedora
 require_root
-require_cmd wget
 require_cmd curl
 require_cmd lsusb
 
@@ -173,7 +174,9 @@ SHA_URL="${TARBALL_URL}.sha256"
 TARBALL_NAME=$(basename "${TARBALL_URL}")
 info "Latest release: ${TARBALL_NAME}"
 
+echo "Downloading RPM tarball..."
 download "${TARBALL_URL}" /tmp
+echo "Downloading sha256 checksum..."
 download "${SHA_URL}"     /tmp
 CLEANUP_FILES+=("/tmp/${TARBALL_NAME}" "/tmp/${TARBALL_NAME}.sha256")
 
