@@ -147,7 +147,7 @@ fi
 # Step 2: akmod-nvidia
 heading "Step 2: Install the NVIDIA driver builder (akmod-nvidia)"
 
-if rpm -qa | grep -q "^akmod-nvidia"; then
+if rpm -q akmod-nvidia &>/dev/null; then
     ok "akmod-nvidia is already installed - skipping."
 else
     info "Enabling RPM Fusion free + nonfree repositories..."
