@@ -10,7 +10,11 @@ Recent Lenovo Legion laptops use the AW88399 Smart Amp, which has incomplete sup
 - Legion Pro 7 Gen 10 (16AFR10H) - AMD
 
 **Credits & Attributions**
-This work builds upon the [original Intel audio fix](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga) by **Lyapsus**, **Nadim Kobeissi**, and contributors. Their incredible work made this project possible.
+*Audio patch*: This work builds upon the [original Intel audio fix](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga) by **Lyapsus**, **Nadim Kobeissi**, and contributors. Their incredible work made this project possible.
+
+*mt7927 patch*: all credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms).
+
+More detailed credits are available at the bottom of this page.
 
 **What's new in this fork:**
 - **Full AMD platform support** (16AFR10H)
@@ -50,8 +54,8 @@ If you read [the original guide](https://github.com/nadimkobeissi/16iax10h-linux
 ### Manual installation
 If you'd rather not run an automated install script, follow the steps below to install everything manually.
 1. **Install the firmware**
-- [Download the `aw88399_acf.bin` file from this repo's `firmware` folder](firmware/aw88399/aw88399_acf.bin); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in the [firmware extraction guide](docs/firmware_extraction.md).
-- *Optional but recommended:* [Download the `aw88399_acf.bin.sha256` file from this repo's `firmware` folder](firmware/aw88399/aw88399_acf.bin.sha256), put it in the same folder as the downloaded `aw88399_acf.bin`, and check the integrity of the binary:
+- Download the [aw88399_acf.bin file](firmware/aw88399/aw88399_acf.bin) from this repo's [firmware folder](firmware/); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in the [firmware extraction guide](docs/firmware_extraction.md).
+- *Optional but recommended:* Download the [`aw88399_acf.bin.sha256`](firmware/aw88399/aw88399_acf.bin.sha256) file, put it in the same folder as the downloaded `aw88399_acf.bin`, and check the integrity of the binary:
 ```bash
 # run this in the folder containing both the .bin and the .bin.sha256 files
 sha256sum -c aw88399_acf.bin.sha256
@@ -61,7 +65,7 @@ If this doesn't return "OK", it means either file got corrupted in the download.
 ```bash
 sudo cp -f aw88399_acf.bin /lib/firmware/aw88399_acf.bin
 ```
-- If you own the AMD model and wish to enable Wi-Fi and Bluetooth using jetm's [mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms), repeat the above steps with [BT_RAM_CODE_MT6639_2_1_hdr.bin](firmware/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin), [WIFI_MT6639_PATCH_MCU_2_1_hdr.bin](firmware/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin), and [WIFI_RAM_CODE_MT6639_2_1.bin](firmware/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin) (but mind the different install location):
+- If you own the AMD model and wish to enable Wi-Fi and Bluetooth using jetm's [mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms), repeat the above steps with [BT_RAM_CODE_MT6639_2_1_hdr.bin](firmware/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin), [WIFI_MT6639_PATCH_MCU_2_1_hdr.bin](firmware/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin), and [WIFI_RAM_CODE_MT6639_2_1.bin](firmware/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin) - but mind the different install path:
 ```bash
 # check sha256 checksums
 sha256sum -c BT_RAM_CODE_MT6639_2_1_hdr.bin.sha256
@@ -235,6 +239,7 @@ I believe it should be possible to install the same patched kernel RPMs on immut
 
 ## Credits
 
+### Audio patch
 This project builds upon the Intel audio driver work by Lyapsus, Nadim Kobeissi and others at [nadimkobeissi/16iax10h-linux-sound-saga](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga). I worked on porting the patch to the AMD model, fixing the broken bass volume controls, the distorted internal mic, the echoing jack, extending parts of the patch, reverse engineering parts of the Windows driver, and automating the process of building the patched kernel using Fedora's tools.
 
 <details>
@@ -252,3 +257,6 @@ This project builds upon the Intel audio driver work by Lyapsus, Nadim Kobeissi 
 
 > Sincere thanks to everyone who [pledged](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/blob/main/PLEDGE.md) a reward for solving this problem.
 </details>
+
+### mt7927 patch
+All credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms); I haven’t made any meaningful changes to their work. The only difference between their repo and the contents of my [patches/mt7927](patches/mt7927) folder is that I repackaged the split patches in a single file, since this repo is focused on building a patched kernel rather than upstream review or DKMS packaging.
