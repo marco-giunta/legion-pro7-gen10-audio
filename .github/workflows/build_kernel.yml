@@ -73,7 +73,7 @@ jobs:
                 else
                     AUDIO_PATCH=$(ls patches/audio/*.patch 2>/dev/null | tail -1)
                 fi
-                MT_PATCH=$(ls patches/mt7927/*.patch 2>/dev/null)
+                MT_PATCH=$(ls patches/mt7927/*.patch 2>/dev/null | tail -1)
 
                 if [ -z "${AUDIO_PATCH}" ]; then
                     echo "ERROR: No audio patch found under patches/audio/"
@@ -83,6 +83,9 @@ jobs:
                     echo "ERROR: No mediatek patch found under patches/mt7927/"
                     exit 1
                 fi
+
+                MT_VER=$(basename "${MT_PATCH}" .patch | grep -oP '(?<=v)[\d.]+')
+                echo "MT_VER=${MT_VER}" >> "$GITHUB_ENV"
 
                 echo "Audio patch: ${AUDIO_PATCH}"
                 echo "Mediatek patch: ${MT_PATCH}"
@@ -133,6 +136,7 @@ jobs:
                     Automated build of the Legion Pro 7/7i Gen 10 patched kernel RPMs.
 
                     **Fedora version:** ${{ env.FEDORA_VERSION }}
+                    **[jetm](https://github.com/jetm/mediatek-mt7927-dkms)'s mt7927 patch version:** ${{ env.MT_VER }}
 
                     ### Contents
                     `legion-pro7-audio-*.tar.gz`: tarball of all required RPMs
@@ -150,5 +154,3 @@ jobs:
                     ${{ env.ARCHIVE }}.sha256
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
