@@ -10,6 +10,7 @@ Recent Lenovo Legion laptops use the AW88399 Smart Amp, which has incomplete sup
 - Legion Pro 7 Gen 10 (16AFR10H) - AMD
 
 **Credits & Attributions**
+
 *Audio patch*: This work builds upon the [original Intel audio fix](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga) by **Lyapsus**, **Nadim Kobeissi**, and contributors. Their incredible work made this project possible.
 
 *mt7927 patch*: all credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms).
@@ -65,7 +66,7 @@ If this doesn't return "OK", it means either file got corrupted in the download.
 ```bash
 sudo cp -f aw88399_acf.bin /lib/firmware/aw88399_acf.bin
 ```
-- If you own the AMD model and wish to enable Wi-Fi and Bluetooth using jetm's [mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms), repeat the above steps with [BT_RAM_CODE_MT6639_2_1_hdr.bin](firmware/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin), [WIFI_MT6639_PATCH_MCU_2_1_hdr.bin](firmware/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin), and [WIFI_RAM_CODE_MT6639_2_1.bin](firmware/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin) - but mind the different install path:
+- If you own the AMD model and wish to enable Wi-Fi and Bluetooth using jetm's [mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms), also install [BT_RAM_CODE_MT6639_2_1_hdr.bin](firmware/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin), [WIFI_MT6639_PATCH_MCU_2_1_hdr.bin](firmware/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin), and [WIFI_RAM_CODE_MT6639_2_1.bin](firmware/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin):
 ```bash
 # check sha256 checksums
 sha256sum -c BT_RAM_CODE_MT6639_2_1_hdr.bin.sha256
