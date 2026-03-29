@@ -11,6 +11,10 @@ on:
                 description: 'Specific kernel to use via koji (e.g. kernel-6.19.9-200.fc43)'
                 required: false
                 default: ''
+            patch_version:
+                description: 'Specific audio patch file to use instead of the latest available (including file extension)'
+                required: false
+                default: ''
             build_id:
                 description: 'Custom kernel build ID suffix (no spaces, no leading dot)'
                 required: true
@@ -24,6 +28,7 @@ jobs:
         env:
             FEDORA_VERSION: ${{ github.event.inputs.fedora_version || '43'}}
             KERNEL_VERSION: ${{ github.event.inputs.kernel_version || ''}}
+            PATCH_VERSION:  ${{ github.event.inputs.patch_version  || ''}}
             BUILD_ID:       ${{ github.event.inputs.build_id || 'legion'}}
 
         steps:
@@ -59,7 +64,15 @@ jobs:
                 dnf builddep -y kernel.spec
             - name: Concatenate audio + mediatek patches into linux-kernel-test.patch
               run: |
-                AUDIO_PATCH=$(ls patches/audio/*.patch 2>/dev/null | tail -1)
+                if [ -n "${PATCH_VERSION}" ]; then
+                    AUDIO_PATCH="patches/audio/${PATCH_VERSION}"
+                    if [ ! -f "${AUDIO_PATCH}" ]; then
+                        echo "ERROR: Specified patch file not found: ${AUDIO_PATCH}"
+                        exit 1
+                    fi
+                else
+                    AUDIO_PATCH=$(ls patches/audio/*.patch 2>/dev/null | tail -1)
+                fi
                 MT_PATCH=$(ls patches/mt7927/*.patch 2>/dev/null)
 
                 if [ -z "${AUDIO_PATCH}" ]; then
