@@ -71,9 +71,9 @@ jobs:
                         exit 1
                     fi
                 else
-                    AUDIO_PATCH=$(ls patches/audio/*.patch 2>/dev/null | tail -1)
+                    AUDIO_PATCH=$(ls -v patches/audio/*.patch 2>/dev/null | tail -1)
                 fi
-                MT_PATCH=$(ls patches/mt7927/*.patch 2>/dev/null | tail -1)
+                MT_PATCH=$(ls -v patches/mt7927/*.patch 2>/dev/null | tail -1)
 
                 if [ -z "${AUDIO_PATCH}" ]; then
                     echo "ERROR: No audio patch found under patches/audio/"
