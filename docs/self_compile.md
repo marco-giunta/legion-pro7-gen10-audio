@@ -83,8 +83,9 @@ CONFIG_SND_HDA_SCODEC_AW88399=m
 CONFIG_SND_HDA_SCODEC_AW88399_I2C=m
 ```
 Please note that you do *not* have to add either `CONFIG_SND_SOC_AW88399=m` or any of the Intel/AMD specific parameters from the original guide, as these are *already included by default by Fedora*. Feel free to inspect `kernel/kernel-x86_64-fedora.config`; you'll see e.g. that `CONFIG_SND_SOC_AW88399=m` is already there. Indeed, the above 2 lines are simply the two new config parameters added by Lyapsus; `fedpkg` will take the contents of `kernel-local` and add it to the preexisting default Fedora configs.
+
 ### Defining the `buildid`
-Before starting the build process, it's important to choose a meaningful custom name for the patched kernel. This name will decide the name of the RPM packages (the output files will be called `kernel...<custom name>.rpm`, and the corresponding packages in `dnf` will show up with the same custom name), and the name of the kernel itself (after installing, the new kernel will show up in grub using this custom name). I recommend using a custom name (despite this being disabled by default), as doing so will allow you to easily tell the patched kernel from the stock one, allowing them to coexist without issues (it's best to always keep around the stock kernel untouched for backup).
+Before starting the build process, it's important to choose a meaningful custom build id for the patched kernel; this string will be used to name the RPM packages, how they show up in `dnf`, and how the patched kernel is named in the grub boot menu. Despite this feature being disabled by default, I recommend using it, as it will allow you to easily tell the patched kernel from the stock one, allowing both of them to coexist without issues - which is a good idea, so you can keep around the default Fedora kernel for backup.
 
 Inside the `kernel` folder, locate and open the file called `kernel.spec`. Locate the following line:
 ```
@@ -101,14 +102,12 @@ For example, to name the custom kernel `legion`, use:
 Mind the dot before the name you choose, and be sure to use a single word (no spaces).
 
 
-patch, config, buildid, secure boot, ccache
-
 ## Step 4: Compile the kernel
 To build the kernel, navigate to the `kernel` folder, then type:
 ```bash
 fedpkg local --without debug
 ```
-I recommend using the `--without debug` option above because otherwise fedpkg will build both the standard kernel and the debug one, which has extra tools not needed unless you're doing kernel development. Furthermore, building the debug kernel alongside the one we actually need will double the build time, and given Fedora's default you're likely not going to have enough space in your boot partition to install the debug kernel either way.
+I recommend using the `--without debug` option above because otherwise fedpkg will build both the standard kernel and the debug one, which has extra tools not needed unless you're doing kernel development. Furthermore, building the debug kernel alongside the one we actually need will double the build time; finally, given Fedora's default partition settings, you're likely not going to have enough space in your boot partition to install the debug kernel either way.
 
 If you plan on recompiling the kernel multiple times, I recommend installing the `ccache` package (`sudo dnf install ccache`), and instead running
 ```bash
@@ -116,7 +115,7 @@ fedpkg local --without debug --with ccache
 ```
 The first time you build the kernel this will cache a few gigabytes in `~/.cache/ccache`; further recompilations will then be sped up by recycling what hasn't changed from the last time.
 
-By using these parameters, you can cut the compilation time from ~50-60 minutes to ~20-30 minutes (during which all your CPU cores will be used, so if your fans start making a lot of noise, know it's not cause for concern).
+By using these parameters, you can cut the compilation time from ~50-60 minutes to ~20-30 minutes (during which all your CPU cores will be used).
 
 ## Step 5: Install the patched kernel
 Once the build process finished with no errors, you will see a new `x86_64` folder inside the `kernel` folder, full of a large number of RPMs. Do *not* install them all; we don't need most of them, and a blanket install will likely fail either way because of insufficient space in your boot partition. 
@@ -129,12 +128,13 @@ If you recompiled a the same kernel version with the same buildid and want to fo
 sudo rpm -ivh --force ./x86_64/kernel-6*.rpm ./x86_64/kernel-core-*.rpm ./x86_64/kernel-modules-*.rpm ./x86_64/kernel-devel-*.rpm
 ```
 
+*Why only these packages are necessary:*
 - The `kernel-core-*.rpm` is the base kernel, needed for obvious reasons.
-- The `kernel-modules-*.rpm` files are needed because the core kernel doesn't contain things built as separate modules; without these RPMs, fairly basic things like brightness up/down will be broken.
+- The `kernel-modules-*.rpm` files are needed because the core kernel doesn't contain the drivers that are built as separate modules; without these RPMs, fairly basic things like brightness up/down will be broken.
 - The `kernel-devel-*.rpm` files are needed by `akmod-nvidia` to build the NVIDIA driver for the kernel.
 - The `kernel-*.rpm` is mostly small dnf metadata. It's technically optional, but it's best to include it because dnf expects it to be there.
 
-All the other RPMs are needed for debugging/profiling purposes, which we don't need to just fix the Legion's audio.
+All the other RPMs are needed for debugging and profiling purposes, which we don't need to just fix the Legion's audio.
 
 ## Step 6: Build the NVIDIA driver
 After installing the kernel via dnf, `akmod-nvidia` will automatically start building the NVIDIA driver. To check on it, use `sudo akmods --force`; once an "OK" appears next to the patched kernel's name, you can reboot safely. If you reboot before this process is finished, you may be stuck on a black screen after the grub boot menu; to fix this, you can either use the `nomodeset` boot parameter to temporarily disable the NVIDIA driver, or boot an older kernel and force `akmods` using the previous command. However, building/checking the driver on the Legion should only take a few seconds, so if you encounter these issues something else has probably gone wrong.
