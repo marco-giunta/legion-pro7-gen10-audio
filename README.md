@@ -36,6 +36,8 @@ More generally, Claude was part of how I learned (alongside reading documentatio
 ## Quick start
 ***Patch compatibility:*** this section assumes you are a Fedora Linux user who wishes to install the patched kernel prepackaged as an RPM. If you use a different Linux distro or prefer to compile your own kernel RPMs, please check the FAQ for instructions on how to patch the Linux kernel yourself.
 
+***Secure Boot:*** both of the install methods below assume that Secure Boot has been disabled in the BIOS; otherwise, the patched kernel won't boot and you'll be stuck with a black screen after the GRUB menu. If you haven't already disabled Secure Boot, please read the "black screen issues" and "Secure Boot" sections in the FAQ, especially if you dual-boot Windows, wish to keep Secure Boot enabled, or haven't backed up your Microsoft BitLocker recovery key yet (more on this in those sections).
+
 ### Automated Installation
 The easiest way to install the patched kernel is to run the automated wizard:
 ```bash
@@ -238,13 +240,26 @@ See the [Firmware Extraction Guide](docs/firmware_extraction.md) for details on 
 - Patches are publicly visible in [`patches/`](patches/).
 - You can [build the patched kernel yourself](docs/self_compile.md) to verify.
 
-### Secure Boot
-This kernel is unsigned, meaning that the OS won't boot with Secure Boot enabled. This means you have these options:
-1. Disable Secure Boot in BIOS settings (recommended)
-2. Compile and sign the kernel yourself with your own MOK (see the [self-compile guide](docs/self-compile.md)). Please be aware that I did not try this; if you do try and succeed, please open an issue and let me know!
-3. Disable Secure Boot, install the patched kernel (either by downloading the precompiled RPMs from this repo, or by compiling the patched kernel yourself using the self-compile guide), sign the kernel from inside the OS using e.g. [sbctl](https://github.com/Foxboron/sbctl), then re-enable Secure Boot. This will require you to temporarily switch Secure Boot to setup mode in the BIOS. Again, please note that I did not test, so I cannot guarantee this will work; if you try, please let me know by opening an issue!
+### Black screen issues
+If you see a black screen with a cursor or bar in the top left corner after selecting the patched kernel in the GRUB boot menu, the most likely cause is Secure Boot blocking the patched kernel from loading, as it is unsigned (unlike the stock Fedora kernel, which is signed with the Microsoft keys). 
+A black screen can also indicate a GPU driver initialization failure. 
 
-Personally, I recommend option 1 unless you need to dual boot Windows *and* need to run software that refuses to start without secure boot (Windows itself will try to scare you into submission every time you change a bios setting by forcing you to input the bitlocker key, but after that will boot just fine with secure boot disabled). Alternatively, use option 3; option 2 will work for the kernel itself, but in order to use the proprietary NVIDIA drivers (which are loaded in user space), you will need to sign them separately either way, as even an appropriately signed kernel will not boot with the proprietary NVIDIA drivers.
+To find out which is it, follow these steps in order.
+
+> If you dual boot Windows, before changing any BIOS setting, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it after every BIOS change, so make sure you're not locked out.
+
+1. Check if Secure Boot is enabled in the BIOS settings (it will be if your machine came with Windows and you haven't disabled it yet); if so, disable it and try booting the patched kernel. If this works, Secure Boot was the issue. The next section contains some more information regarding what to do about this.
+2. If the above doesn't fix the black screen, the issue is likely GPU driver related. With Secure Boot still disabled, try the following: select the patched kernel in GRUB, press `e`, add `nomodeset` to the line starting with `linux`, then boot. This disables GPU mode setting entirely. If the OS boots with this parameter, the issue is driver related. In this case, boot back into the stock kernel and run `sudo akmods --force` to check whether the NVIDIA driver built correctly for the patched kernel, then try again.
+
+### Secure Boot
+Secure Boot is a BIOS feature whose stated purpose is to prevent unauthorized software from running at boot. In practice, on consumer hardware and *with the factory keys*, this mainly means that Microsoft and hardware vendors get to decide which software is allowed to boot on your own machine; it offers little to no concrete security benefit for a typical home user, and is a well-known source of friction for Linux users running custom or unsigned kernels. Indeed, the only reason why the stock Fedora kernel boots with secure boot enabled, is because they [paid a fee](https://fedoraproject.org/wiki/Secureboot) to Microsoft to gain access to their signing keys, and why smaller distros *require* secure boot to be disabled to install.
+
+My recommendation: *disable Secure Boot*. Unless you have a specific, concrete need to run software that refuses to start without it, I recommend simply leaving Secure Boot disabled - including in dual boot scenarios. Windows 11 requires Secure Boot to *install*, but runs perfectly fine without it; it will ask just once for the BitLocker key after you disable it, and after that it will boot normally.
+
+If you do need to keep Secure Boot enabled, or in general disagree with my opinion on the topic, you can sign the kernel yourself using e.g. [sbctl](https://github.com/foxboron/sbctl) or `mokutil`. This involves temporarily enabling Secure Boot setup mode in the BIOS, enrolling a custom key, and using it to sign the patched kernel. 
+If you use the proprietary NVIDIA drivers, those will need to be signed separately as well, since they are loaded in userspace and are not part of the kernel itself.
+If you choose to go down this path, read sbctl's documentation carefully. In particular, make sure you understand how it interacts with the existing Microsoft Secure Boot keys, as you need those to remain enrolled to avoid issues with Windows. Note that you may also need to manually re-sign on every kernel and NVIDIA driver update. As this is a well documented problem independent of this patch, I recommend looking up guides on using secure boot with custom kernels and NVIDIA drivers on Fedora. I haven't tested this myself, so if you try and succeed, please open an issue and let me know!
+
 
 ### Fedora Atomic/Immutable Fedora-based distros
 I believe it should be possible to install the same patched kernel RPMs on immutable distros as well, using `rpm-ostree` in place of `dnf`. Similarly it's likely that the steps detailed in the [self-compile guide](docs/self-compile.md) will work if performed in a container. As I only tested everything in Fedora 43 KDE I cannot be sure; if you are e.g. a Bazzite user, please try and open an issue if you succeed!
