@@ -36,7 +36,7 @@ More generally, Claude was part of how I learned (alongside reading documentatio
 ## Quick start
 ***Patch compatibility:*** this section assumes you are a Fedora Linux user who wishes to install the patched kernel prepackaged as an RPM. If you use a different Linux distro or prefer to compile your own kernel RPMs, please check the FAQ for instructions on how to patch the Linux kernel yourself.
 
-***Secure Boot:*** both of the install methods below assume that Secure Boot has been disabled in the BIOS; otherwise, the patched kernel won't boot and you'll be stuck with a black screen after the GRUB menu. If you haven't already disabled Secure Boot, please read the "black screen issues" and "Secure Boot" sections in the FAQ, especially if you dual-boot Windows, wish to keep Secure Boot enabled, or haven't backed up your Microsoft BitLocker recovery key yet (more on this in those sections).
+***Secure Boot:*** both of the install methods below assume that Secure Boot has been disabled in the BIOS; otherwise, the patched kernel won't boot and you'll be stuck with a black screen after the GRUB menu. If you haven't already disabled Secure Boot, please read the "black screen issues" and "Secure Boot" sections in the FAQ. This is especially relevant if you dual-boot Windows, wish to keep Secure Boot enabled, or haven't backed up your Microsoft BitLocker recovery key yet (more on this in those sections).
 
 ### Automated Installation
 The easiest way to install the patched kernel is to run the automated wizard:
@@ -241,14 +241,14 @@ See the [Firmware Extraction Guide](docs/firmware_extraction.md) for details on 
 - You can [build the patched kernel yourself](docs/self_compile.md) to verify.
 
 ### Black screen issues
-If you see a black screen with a cursor or bar in the top left corner after selecting the patched kernel in the GRUB boot menu, the most likely cause is Secure Boot blocking the patched kernel from loading, as it is unsigned (unlike the stock Fedora kernel, which is signed with the Microsoft keys). 
+If you see a black screen with a cursor or bar in the top left corner after selecting the patched kernel in the GRUB boot menu, the most likely cause is Secure Boot preventing the patched kernel from loading, as it is unsigned (unlike the stock Fedora kernel, which is signed with Microsoft's keys).
 A black screen can also indicate a GPU driver initialization failure. 
 
 To find out which is it, follow these steps in order.
 
 > If you dual boot Windows, before changing any BIOS setting, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it after every BIOS change, so make sure you're not locked out.
 
-1. Check if Secure Boot is enabled in the BIOS settings (it will be if your machine came with Windows and you haven't disabled it yet); if so, disable it and try booting the patched kernel. If this works, Secure Boot was the issue. The next section contains some more information regarding what to do about this.
+1. Check if Secure Boot is enabled in the BIOS settings (it will be if your machine came with Windows and you haven't disabled SB yet); if so, disable SB and try booting the patched kernel. If this works, Secure Boot was the issue. The next section contains some more information regarding what to do about this.
 2. If the above doesn't fix the black screen, the issue is likely GPU driver related. With Secure Boot still disabled, try the following: select the patched kernel in GRUB, press `e`, add `nomodeset` to the line starting with `linux`, then boot. This disables GPU mode setting entirely. If the OS boots with this parameter, the issue is driver related. In this case, boot back into the stock kernel and run `sudo akmods --force` to check whether the NVIDIA driver built correctly for the patched kernel, then try again.
 
 ### Secure Boot
