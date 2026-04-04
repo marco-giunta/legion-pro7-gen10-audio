@@ -43,7 +43,8 @@ curl -fsSL https://raw.githubusercontent.com/marco-giunta/legion-pro7-gen10-audi
 ```
 You can also manually download the [install script](scripts/install.sh) and run it using `sudo sh install.sh`.
 
-This script will guide you through installing the required firmware, setting up the NVIDIA drivers, and installing the patched kernel's RPMs.
+This script will guide you through installing the required firmware, the NVIDIA drivers from the RPM Fusion nonfree repos, and the patched kernel's RPMs.
+If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the "manual installation" section below.
 
 After the script is done, reboot; your system should automatically boot the patched kernel. You can confirm this by running `uname -r`; if you see a string containing the word `legion`, you're good to go. Otherwise, reboot your computer and repeatedly press the ESC key during boot to access the grub menu. You'll find an entry labeled `<...>.legion<...>.fc<...>.x86_64`; select it with the up/down keys, then press enter.
 
@@ -86,7 +87,11 @@ To obtain your own copy of these Mediatek binaries from official Windows drivers
 
 
 2. **Install the NVIDIA driver builder**
-The `akmod-nvidia` package is needed to automatically build the NVIDIA driver for the patched kernel.
+The `akmod-nvidia` package is needed to automatically build the NVIDIA driver for the patched kernel. This package builds the driver as distributed in the nonfree RPM Fusion repo, and is [the standard approach on Fedora](https://rpmfusion.org/Howto/NVIDIA) and what this guide assumes.
+
+> Skip this step if you prefer the open source Mesa/NVK driver, want to obtain the proprietary driver from a different repo, or are on a Fedora derivative that already manages the NVIDIA driver for you. Since the patch only touches audio (and optionally WiFi/BT on the AMD model), there's no fundamental reason why a different graphics setup shouldn't work; however, alternative paths are untested, so you're on your own. Feel free to open an issue if you run into anything useful to share. If you're unsure, just follow the steps below.
+
+
 Run the following command:
 ```bash
 rpm -qa | grep akmod-nvidia
@@ -112,7 +117,7 @@ sha256sum -c legion-pro7-audio-*.tar.gz.sha256
 tar xzf legion-pro7-audio-*.tar.gz
 sudo dnf install --nogpgcheck kernel-*.rpm
 ```
-The patched kernel will now be available in the grub menu. Before rebooting, run
+The patched kernel will now be available in the grub menu. If you installed the `akmod-nvidia` package in step 2, before rebooting, run
 ```bash
 sudo akmods --force
 ```
