@@ -1,0 +1,66 @@
+From 91cf84664486a1165e7db5fce2bb415273739f60 Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Tue, 30 Jun 2026 20:17:16 +0200
+Subject: [PATCH 2/9] ASoC: aw88399: check return values in aw_dev_check_sram
+
+aw_dev_check_sram calls aw_dev_dsp_read and aw_dev_dsp_write without
+checking their return values. If a DSP read fails, reg_val is left
+uninitialized and the subsequent comparison is undefined behavior.
+If a DSP write fails, the subsequent read-back verification is
+meaningless.
+
+Add return value checks for all three DSP access calls, returning
+early with the error code if any fail. This follows the pattern
+used consistently throughout the rest of the driver.
+
+Tested-by: Nadim Kobeissi <nadim@symbolic.software>
+Tested-by: Xia Yun'an <imitoy@imitoy.top>
+Tested-by: Munzir Taha <munzirtaha@gmail.com>
+Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
+---
+ sound/soc/codecs/aw88399-lib.c | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/codecs/aw88399-lib.c b/sound/soc/codecs/aw88399-lib.c
+index 56c867943581..fde00559d749 100644
+--- a/sound/soc/codecs/aw88399-lib.c
++++ b/sound/soc/codecs/aw88399-lib.c
+@@ -846,9 +846,14 @@ static int aw_dev_dsp_update_fw(struct aw_device *aw_dev,
+ static int aw_dev_check_sram(struct aw_device *aw_dev)
+ {
+ 	unsigned int reg_val;
++	int ret;
+ 
+ 	/* read dsp_rom_check_reg */
+-	aw_dev_dsp_read(aw_dev, AW88399_DSP_ROM_CHECK_ADDR, &reg_val, AW_DSP_16_DATA);
++	ret = aw_dev_dsp_read(aw_dev, AW88399_DSP_ROM_CHECK_ADDR, &reg_val, AW_DSP_16_DATA);
++	if (ret) {
++		dev_err(aw_dev->dev, "failed to read dsp rom check reg: %d", ret);
++		return ret;
++	}
+ 	if (reg_val != AW88399_DSP_ROM_CHECK_DATA) {
+ 		dev_err(aw_dev->dev, "check dsp rom failed, read[0x%x] != check[0x%x]",
+ 						reg_val, AW88399_DSP_ROM_CHECK_DATA);
+@@ -856,9 +861,17 @@ static int aw_dev_check_sram(struct aw_device *aw_dev)
+ 	}
+ 
+ 	/* check dsp_cfg_base_addr */
+-	aw_dev_dsp_write(aw_dev, AW88399_DSP_CFG_ADDR,
++	ret = aw_dev_dsp_write(aw_dev, AW88399_DSP_CFG_ADDR,
+ 				AW88399_DSP_ODD_NUM_BIT_TEST, AW_DSP_16_DATA);
+-	aw_dev_dsp_read(aw_dev, AW88399_DSP_CFG_ADDR, &reg_val, AW_DSP_16_DATA);
++	if (ret) {
++		dev_err(aw_dev->dev, "failed to write dsp cfg test pattern: %d", ret);
++		return ret;
++	}
++	ret = aw_dev_dsp_read(aw_dev, AW88399_DSP_CFG_ADDR, &reg_val, AW_DSP_16_DATA);
++	if (ret) {
++		dev_err(aw_dev->dev, "failed to read dsp cfg test pattern: %d", ret);
++		return ret;
++	}
+ 	if (reg_val != AW88399_DSP_ODD_NUM_BIT_TEST) {
+ 		dev_err(aw_dev->dev, "check dsp cfg failed, read[0x%x] != write[0x%x]",
+ 						reg_val, AW88399_DSP_ODD_NUM_BIT_TEST);
+-- 
+2.55.0
+

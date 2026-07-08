@@ -5,6 +5,20 @@
 
 # Changelog
 
+## v0.4.3
+
+Similarly to the previous entry, this version's goal is to polish the main driver by removing some unused features and better matching the other HDA side codec drivers.
+
+- Removed the separate `aw88399_hda_regmap_i2c` struct, as its contents are identical to the preexisting `aw88399_remap_config` struct from the original asoc driver.
+- Moved `aw88399_remap_config` to the shared library to ensure both drivers can use it (consequently, added an export statement and its corresponding declaration in `include/sound/aw88399.h`).
+- Changed `aw88399_hda_probe` signature: removed unused `device_name`, `id`, `irq` parameters; added `struct regmap *regmap` parameter.
+- Moved `devm_regmap_init_i2c(clt, &aw88399_remap_config)` to i2c driver, and this struct is now passed as an argument to the above function instead of being defined in its body. This change is done to follow the convention of the other HDA side codec drivers (cs35l41, tas2781, etc.). Correspondingly, moved `#include <linux/regmap.h>` from main driver to i2c driver (and removed unused `#include <linux/regulator/consumer.h>`).
+- Removed unused `bool suspended` field and corresponding assignments in main driver/header.
+- Replaced some `dev_err` + `return` patterns with `dev_err_probe`, better matching the cs35l41 side codec and original asoc drivers.
+- Added early error returns in `aw88399_hda_acpi_probe` for missing ACPI device and physical node, following more closely the cirrus driver (consequently, reworked the corresponding logic slightly).
+- Removed some not-strictly-necessary comments from the main driver.
+- Rebased on commit `f9355bbae61af59e136cc840c0fb3110e676946b` from `tiwai/sound`.
+
 ## v0.4.2
 
 The changes in this version are mostly aimed at cleaning up the i2c driver, with the intent of removing deprecated functionality and ensuring a closer match to the conventions of the cs35l41 and tas2781 i2c drivers. As such, they mostly target patch 8/9.
@@ -23,7 +37,7 @@ fully matching the cirrus driver (after the removal of `#include <linux/mod_devi
 - As per the same `910714d4e79b` commit, fixed the spacing convention in the `{ }` terminator at the end of the `aw88399_hda_i2c_id` struct.
 - Fixed the order of the metadata lines (module description, author, etc.) at the end of the i2c driver.
 - Removed file names from the comments at the top of the new drivers, and added Lyapsus' author lines to match the cs35l41 convention (my author line in the property driver was already there).
-- In patch 1/8, slightly edited the top comment to better match the convention of the original ASoC driver.
+- In patch 1, slightly edited the top comment to better match the convention of the original ASoC driver.
 
 ## v0.4.1
 
@@ -137,7 +151,7 @@ Original patch series proposal, based on commit `876c495d412ef67bd4d0bdc4b74b0bd
 See [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/55#issue-4343077194) for more informations.
 
 1. **ASoC: aw88399: extract shared device library** - pure code movement, no logic changes
-2. **ASoC: aw88399: check return values in aw_dev_check_sram**: - proper error handling for DSP access calls (bugfix)
+2. **ASoC: aw88399: check return values in aw_dev_check_sram** - proper error handling for DSP access calls (bugfix)
 3. **ASoC: aw88399: derive channel from I2C address on ACPI systems**
 4. **ASoC: aw88399: add per-instance BSTS status bypass flag**
 5. **ACPI/platform: add AWDZ8399 to serial-multi-instantiate**
