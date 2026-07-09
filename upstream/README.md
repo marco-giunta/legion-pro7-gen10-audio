@@ -5,6 +5,20 @@
 
 # Changelog
 
+# v0.4.4
+
+This version introduces yet another round of unused code removal from the main driver. It also introduces changes aimed at making it more compact and targeted, following a comparison with the other cirrus HDA side codec driver (cs35l56) and a revised analysis of the cs35l41 driver.
+
+- Merged property driver into main driver: removed `aw88399_hda_property.c`, `aw88399_hda_property.h`, and the corresponding `Makefile` entry; the quirk table and matching loop are now inline in `aw88399_hda.c`. This "compression" is done because, regarding ACPI SSID quirk matching, our use-case is overall more similar to the cs35l56 driver (which has the same single-file approach) than the cs35l41 (which has a large, dedicated property driver file). In particular, the former driver has a small table of quirks (in fact, just 1 device) and very simple per-device quirks, like our driver; the latter, instead, contains many devices and complex logic to perform specialized ad-hoc overrides of the `_DSD` properties read from the ACPI firmware tables.
+- Consistently with this merge, added `#include <linux/string.h>` to the main driver, reworked patch 9 to add the quirk functions (channel swap, BSTS bypass, legion quirks) and SSID table in `aw88399_hda.c` instead of the deleted property driver, and updated the commit message to reference per-model quirks in `aw88399_hda.c` instead of `aw88399_hda_property.c`.
+- Removed ACPI companion block, as it never fires for SMI-instantiated devices, which by construction break the natural 1:1 mapping between and ACPI device and its corresponding physical device, as also pointed out by comments in the cs35l56 driver and confirmed by tester logs.
+Indeed, the cs35l56 driver restores this connection manually by explicitly creating the appropriate ACPI companion link (i.e. pointer), which is then used to read the necessary `_DSD` properties; the cs35l41 driver, instead, simply creates an independent physical device after obtaining the original ACPI device, matched by HID. My approach is the latter, but even when using the first, simply checking if an ACPI companion exists (without doing something to create it) will always result in an empty return.
+- Removed `_DSD` property parsing: `aw88399_hda_try_dsd_index`, `aw88399_hda_parse_speaker_props`, all three `AW88399_ACPI_PROP_*` defines. No `_DSD` properties exist in DSDT or SSDT tables for the Legion, so this code can never fire in practice (said in another way, only the binary firmware is actually used in practice, so we can remove logic to parse ACPI firmware for anything other than the ACPI SSID, used to match quirks).
+- Removed code regarding ACPI notifications, as the ACPI firmware doesn't support it (notification methods are missing from the DSDT table like the `_DSD` properties mentioned above), and as the only function that was using these was simply printing a debug message.
+- Correspondingly, removed unused struct fields from `aw88399_hda` in `aw88399_hda.h`: `codec`, `adev`, `speaker_pos`, `speaker_id`, `speaker_pos_valid`, `speaker_id_valid`, `acpi_notify_supported`, as well as unused `#include <sound/hda_codec.h>` and deprecated `#include "aw88399_hda_property.h"`. Likewise, simplified channel assignment in init and ACPI probe functions, by removing the `speaker_pos`/`speaker_pos_valid` indirection.
+- Removed author lines from header comment, instead relying only on `MODULE_AUTHOR` metadata at the end of the file.
+- Added `MODULE_AUTHOR("Marco Giunta")` at the end of the main driver, following the merge with the property driver.
+
 ## v0.4.3
 
 Similarly to the previous entry, this version's goal is to polish the main driver by removing some unused features and better matching the other HDA side codec drivers.
