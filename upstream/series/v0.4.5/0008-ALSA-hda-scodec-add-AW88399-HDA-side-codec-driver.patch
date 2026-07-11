@@ -1,5 +1,5 @@
 From b95fc125bc3052d99390999a684cadc29773a751 Mon Sep 17 00:00:00 2001
-From: Marco Giunta <72098193+marco-giunta@users.noreply.github.com>
+From: Marco Giunta <marco_giunta@outlook.it>
 Date: Thu, 9 Jul 2026 22:51:22 +0200
 Subject: [PATCH 8/9] ALSA: hda/scodec: add AW88399 HDA side codec driver
 
@@ -456,7 +456,7 @@ index 000000000000..c013a49c1845
 +
 +MODULE_DESCRIPTION("AW88399 HDA driver");
 +MODULE_AUTHOR("Yakov Till <yakov.till@gmail.com>");
-+MODULE_AUTHOR("Marco Giunta");
++MODULE_AUTHOR("Marco Giunta <marco_giunta@outlook.it>");
 +MODULE_LICENSE("GPL");
 +MODULE_FIRMWARE("aw88399_acf.bin");
 diff --git a/sound/hda/codecs/side-codecs/aw88399_hda.h b/sound/hda/codecs/side-codecs/aw88399_hda.h

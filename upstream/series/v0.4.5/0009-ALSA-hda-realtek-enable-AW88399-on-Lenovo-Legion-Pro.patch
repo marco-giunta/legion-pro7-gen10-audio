@@ -1,5 +1,5 @@
 From b4daa19d21ca8ddc86cc3e5ef078436e6d63df3b Mon Sep 17 00:00:00 2001
-From: Marco Giunta <72098193+marco-giunta@users.noreply.github.com>
+From: Marco Giunta <marco_giunta@outlook.it>
 Date: Thu, 9 Jul 2026 23:10:22 +0200
 Subject: [PATCH 9/9] ALSA: hda/realtek: enable AW88399 on Lenovo Legion Pro
 
