@@ -5,6 +5,11 @@
 
 # Changelog
 
+# v0.4.5
+
+- Removed a few includes that are no longer used after the cleanup in the previous version.
+- Fixed inconsistent styling between the comment headers of the main and i2c drivers.
+
 # v0.4.4
 
 This version introduces yet another round of unused code removal from the main driver. It also introduces changes aimed at making it more compact and targeted, following a comparison with the other cirrus HDA side codec driver (cs35l56) and a revised analysis of the cs35l41 driver.
