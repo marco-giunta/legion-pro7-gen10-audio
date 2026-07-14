@@ -5,6 +5,14 @@
 
 # Changelog
 
+# v0.5
+
+- Removed patch 2 from the series, as it's the only one that is not strictly necessary for setting up the new driver, so it's probably best to send it separately (I'd rather avoid having to make a v2 just for removing a patch from the series).
+- Reworded some commit messages and code comments.
+- Removed unused imports from `aw88399.c` that were previously copied to `aw88399-lib.c`, when they should have been moved instead.
+- Shortened help comment in i2c driver's kconfig entry to better match the cs35l41's.
+- Rebased on commit `1e95515d63b9e5e36d4f93f66381d13e651cc035` from `tiwai/sound`.
+
 # v0.4.5
 
 - Removed a few includes that are no longer used after the cleanup in the previous version.
