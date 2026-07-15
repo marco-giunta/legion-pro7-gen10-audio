@@ -5,7 +5,12 @@
 
 # Changelog
 
-# v0.5
+## v0.5.1
+- Removed unused i2c address clamping `aw88399_hda_index_from_i2c`.
+- Added missing return in the property-applying loop in `aw88399_hda_acpi_probe`. In practice, all the quirks we have so far always trivially return 0, so one could just remove those returns and change `apply_prop`'s return to void, but I'd argue it's better to once again match the cirrus precedent.
+- Rebased on commit `41f1f6d8d2cfaba1fba07af993c9319a1ff2c81f` from `tiwai/sound`.
+
+## v0.5
 
 - Removed patch 2 from the series, as it's the only one that is not strictly necessary for setting up the new driver, so it's probably best to send it separately (I'd rather avoid having to make a v2 just for removing a patch from the series).
 - Reworded some commit messages and code comments.
@@ -13,12 +18,12 @@
 - Shortened help comment in i2c driver's kconfig entry to better match the cs35l41's.
 - Rebased on commit `1e95515d63b9e5e36d4f93f66381d13e651cc035` from `tiwai/sound`.
 
-# v0.4.5
+## v0.4.5
 
 - Removed a few includes that are no longer used after the cleanup in the previous version.
 - Fixed inconsistent styling between the comment headers of the main and i2c drivers.
 
-# v0.4.4
+## v0.4.4
 
 This version introduces yet another round of unused code removal from the main driver. It also introduces changes aimed at making it more compact and targeted, following a comparison with the other cirrus HDA side codec driver (cs35l56) and a revised analysis of the cs35l41 driver.
 
