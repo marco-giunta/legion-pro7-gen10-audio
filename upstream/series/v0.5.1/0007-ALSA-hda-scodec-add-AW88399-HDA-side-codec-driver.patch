@@ -218,7 +218,7 @@ index 000000000000..2403b2e2ed9a
 +	gpiod_set_value_cansleep(aw88399->reset_gpio, 1);
 +	usleep_range(1000, 2000);
 +	gpiod_set_value_cansleep(aw88399->reset_gpio, 0);
-+	usleep_range(3000, 4000);
++	usleep_range(1000, 2000);
 +}
 +
 +static int aw88399_hda_init(struct aw88399_hda *aw88399)

@@ -882,7 +882,7 @@ diff -rupN linux-7.2-rc3/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.2-rc
 +	gpiod_set_value_cansleep(aw88399->reset_gpio, 1);
 +	usleep_range(1000, 2000);
 +	gpiod_set_value_cansleep(aw88399->reset_gpio, 0);
-+	usleep_range(3000, 4000);
++	usleep_range(1000, 2000);
 +}
 +
 +static int aw88399_hda_init(struct aw88399_hda *aw88399)

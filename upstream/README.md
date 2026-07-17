@@ -8,6 +8,7 @@
 ## v0.5.1
 - Removed unused i2c address clamping `aw88399_hda_index_from_i2c`.
 - Added missing return in the property-applying loop in `aw88399_hda_acpi_probe`. In practice, all the quirks we have so far always trivially return 0, so one could just remove those returns and change `apply_prop`'s return to void, but I'd argue it's better to once again match the cirrus precedent.
+- Fixed optional reset gpio sleep timing to be identical across all calls.
 - Rebased on commit `41f1f6d8d2cfaba1fba07af993c9319a1ff2c81f` from `tiwai/sound`.
 
 ## v0.5
