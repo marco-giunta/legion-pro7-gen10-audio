@@ -4,7 +4,7 @@
 
 > Patched Linux audio drivers for Lenovo Legion Pro 7/7i Gen 10 (AMD & Intel). Includes Fedora RPM packages and installation automation. [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model.
 
-> **The patch has been submitted for upstream review; see [here](/upstream/README.md) for more info.**
+> **The patch has been submitted for upstream review; see [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and [here](/upstream/README.md) for more info.**
 
 Recent Lenovo Legion laptops drive their woofers using the AW88399 Smart Amp via I2C bus as side codecs to a Realtek ALC287 HDA codec, in a setup that requires a driver which currently doesn't exist in the mainline Linux kernel. Due to this, on the current stock Linux kernel, the woofers don't work, and as a result the speakers lack bass and overall sound quiet and tinny.
 
