@@ -5,6 +5,11 @@
 
 # Changelog
 
+## v0.5.2
+- Moved `aw88399_hw_reset` from the ASoC driver to the shared library.
+- Removed the separate `aw88399_hda_hw_reset` function from the HDA driver in favor of the above function. Compared to the previous version, this avoids code duplication and fixes the inconsistencies regarding gpio polarity and timing.
+- Rebased on commit `f9be704f58bde47c5ea841d5e4a6e9a7459c1578` from `tiwai/sound`.
+
 ## v0.5.1
 - Removed unused i2c address clamping `aw88399_hda_index_from_i2c`.
 - Added missing return in the property-applying loop in `aw88399_hda_acpi_probe`. In practice, all the quirks we have so far always trivially return 0, so one could just remove those returns and change `apply_prop`'s return to void, but I'd argue it's better to once again match the cirrus precedent.
