@@ -5,6 +5,10 @@
 
 # Changelog
 
+## v1
+- Identical to the previous entry, just with some commit messages slightly edited.
+- Submitted for review here: [lore link](https://lore.kernel.org/linux-sound/DS7PR19MB77247D9AD698CF0FF37DB58BFCC62@DS7PR19MB7724.namprd19.prod.outlook.com/T/#t), [patchwork link](https://patchwork.kernel.org/project/alsa-devel/list/?series=1129606).
+
 ## v0.5.2
 - Moved `aw88399_hw_reset` from the ASoC driver to the shared library.
 - Removed the separate `aw88399_hda_hw_reset` function from the HDA driver in favor of the above function. Compared to the previous version, this avoids code duplication and fixes the inconsistencies regarding gpio polarity and timing.
