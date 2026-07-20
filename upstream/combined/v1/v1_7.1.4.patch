@@ -1,0 +1,4723 @@
+diff -rupN linux-7.1.4/drivers/acpi/scan.c linux-7.1.4_patch_series/drivers/acpi/scan.c
+--- linux-7.1.4/drivers/acpi/scan.c	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/drivers/acpi/scan.c	2026-07-20 11:49:16.492751325 +0200
+@@ -1750,6 +1750,7 @@ static bool acpi_device_enumeration_by_p
+ 	 * by the drivers/platform/x86/serial-multi-instantiate.c driver, which
+ 	 * knows which client device id to use for each resource.
+ 	 */
++		{"AWDZ8399", },
+ 		{"BSG1160", },
+ 		{"BSG2150", },
+ 		{"CSC3551", },
+diff -rupN linux-7.1.4/drivers/platform/x86/serial-multi-instantiate.c linux-7.1.4_patch_series/drivers/platform/x86/serial-multi-instantiate.c
+--- linux-7.1.4/drivers/platform/x86/serial-multi-instantiate.c	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/drivers/platform/x86/serial-multi-instantiate.c	2026-07-20 11:49:16.494751323 +0200
+@@ -307,6 +307,15 @@ static void smi_remove(struct platform_d
+ 	smi_devs_unregister(smi);
+ }
+ 
++static const struct smi_node aw88399_hda = {
++	.instances = {
++		{ "aw88399-hda", IRQ_RESOURCE_AUTO, 0 },
++		{ "aw88399-hda", IRQ_RESOURCE_AUTO, 0 },
++		{}
++	},
++	.bus_type = SMI_AUTO_DETECT,
++};
++
+ static const struct smi_node bsg1160_data = {
+ 	.instances = {
+ 		{ "bmc150_accel", IRQ_RESOURCE_GPIO, 0 },
+@@ -405,6 +414,7 @@ static const struct smi_node tas2781_hda
+  * drivers/acpi/scan.c: acpi_device_enumeration_by_parent().
+  */
+ static const struct acpi_device_id smi_acpi_ids[] = {
++	{ "AWDZ8399", (unsigned long)&aw88399_hda },
+ 	{ "BSG1160", (unsigned long)&bsg1160_data },
+ 	{ "BSG2150", (unsigned long)&bsg2150_data },
+ 	{ "CSC3551", (unsigned long)&cs35l41_hda },
+diff -rupN linux-7.1.4/include/sound/aw88399.h linux-7.1.4_patch_series/include/sound/aw88399.h
+--- linux-7.1.4/include/sound/aw88399.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.4_patch_series/include/sound/aw88399.h	2026-07-20 11:49:16.496296781 +0200
+@@ -0,0 +1,621 @@
++/* SPDX-License-Identifier: GPL-2.0-only
++ *
++ * linux/sound/aw88399.h --  Platform data for AW88399
++ *
++ * Copyright (c) 2023 AWINIC Technology CO., LTD
++ *
++ * Author: Weidong Wang <wangweidong.a@awinic.com>
++ */
++
++#ifndef __SOUND_AW88399_H
++#define __SOUND_AW88399_H
++
++#include <linux/mutex.h>
++#include <linux/workqueue.h>
++
++/* registers list */
++#define AW88399_ID_REG			(0x00)
++#define AW88399_SYSST_REG		(0x01)
++#define AW88399_SYSINT_REG		(0x02)
++#define AW88399_SYSINTM_REG		(0x03)
++#define AW88399_SYSCTRL_REG		(0x04)
++#define AW88399_SYSCTRL2_REG		(0x05)
++#define AW88399_I2SCTRL1_REG		(0x06)
++#define AW88399_I2SCTRL2_REG		(0x07)
++#define AW88399_I2SCTRL3_REG		(0x08)
++#define AW88399_DACCFG1_REG		(0x09)
++#define AW88399_DACCFG2_REG		(0x0A)
++#define AW88399_DACCFG3_REG		(0x0B)
++#define AW88399_DACCFG4_REG		(0x0C)
++#define AW88399_DACCFG5_REG		(0x0D)
++#define AW88399_DACCFG6_REG		(0x0E)
++#define AW88399_DACCFG7_REG		(0x0F)
++#define AW88399_MPDCFG1_REG		(0x10)
++#define AW88399_MPDCFG2_REG		(0x11)
++#define AW88399_MPDCFG3_REG		(0x12)
++#define AW88399_MPDCFG4_REG		(0x13)
++#define AW88399_PWMCTRL1_REG		(0x14)
++#define AW88399_PWMCTRL2_REG		(0x15)
++#define AW88399_PWMCTRL3_REG		(0x16)
++#define AW88399_I2SCFG1_REG		(0x17)
++#define AW88399_DBGCTRL_REG		(0x18)
++#define AW88399_HAGCST_REG		(0x20)
++#define AW88399_VBAT_REG		(0x21)
++#define AW88399_TEMP_REG		(0x22)
++#define AW88399_PVDD_REG		(0x23)
++#define AW88399_ISNDAT_REG		(0x24)
++#define AW88399_VSNDAT_REG		(0x25)
++#define AW88399_I2SINT_REG		(0x26)
++#define AW88399_I2SCAPCNT_REG		(0x27)
++#define AW88399_ANASTA1_REG		(0x28)
++#define AW88399_ANASTA2_REG		(0x29)
++#define AW88399_ANASTA3_REG		(0x2A)
++#define AW88399_TESTDET_REG		(0x2B)
++#define AW88399_DSMCFG1_REG		(0x30)
++#define AW88399_DSMCFG2_REG		(0x31)
++#define AW88399_DSMCFG3_REG		(0x32)
++#define AW88399_DSMCFG4_REG		(0x33)
++#define AW88399_DSMCFG5_REG		(0x34)
++#define AW88399_DSMCFG6_REG		(0x35)
++#define AW88399_DSMCFG7_REG		(0x36)
++#define AW88399_DSMCFG8_REG		(0x37)
++#define AW88399_TESTIN_REG		(0x38)
++#define AW88399_TESTOUT_REG		(0x39)
++#define AW88399_MEMTEST_REG		(0x3A)
++#define AW88399_VSNCTRL1_REG		(0x3B)
++#define AW88399_ISNCTRL1_REG		(0x3C)
++#define AW88399_ISNCTRL2_REG		(0x3D)
++#define AW88399_DSPMADD_REG		(0x40)
++#define AW88399_DSPMDAT_REG		(0x41)
++#define AW88399_WDT_REG		(0x42)
++#define AW88399_ACR1_REG		(0x43)
++#define AW88399_ACR2_REG		(0x44)
++#define AW88399_ASR1_REG		(0x45)
++#define AW88399_ASR2_REG		(0x46)
++#define AW88399_DSPCFG_REG		(0x47)
++#define AW88399_ASR3_REG		(0x48)
++#define AW88399_ASR4_REG		(0x49)
++#define AW88399_DSPVCALB_REG		(0x4A)
++#define AW88399_CRCCTRL_REG		(0x4B)
++#define AW88399_DSPDBG1_REG		(0x4C)
++#define AW88399_DSPDBG2_REG		(0x4D)
++#define AW88399_DSPDBG3_REG		(0x4E)
++#define AW88399_PLLCTRL1_REG		(0x50)
++#define AW88399_PLLCTRL2_REG		(0x51)
++#define AW88399_PLLCTRL3_REG		(0x52)
++#define AW88399_CDACTRL1_REG		(0x53)
++#define AW88399_CDACTRL2_REG		(0x54)
++#define AW88399_CDACTRL3_REG		(0x55)
++#define AW88399_SADCCTRL1_REG		(0x56)
++#define AW88399_SADCCTRL2_REG		(0x57)
++#define AW88399_BOPCTRL1_REG		(0x58)
++#define AW88399_BOPCTRL2_REG		(0x5A)
++#define AW88399_BOPCTRL3_REG		(0x5B)
++#define AW88399_BOPCTRL4_REG		(0x5C)
++#define AW88399_BOPCTRL5_REG		(0x5D)
++#define AW88399_BOPCTRL6_REG		(0x5E)
++#define AW88399_BOPCTRL7_REG		(0x5F)
++#define AW88399_BSTCTRL1_REG		(0x60)
++#define AW88399_BSTCTRL2_REG		(0x61)
++#define AW88399_BSTCTRL3_REG		(0x62)
++#define AW88399_BSTCTRL4_REG		(0x63)
++#define AW88399_BSTCTRL5_REG		(0x64)
++#define AW88399_BSTCTRL6_REG		(0x65)
++#define AW88399_BSTCTRL7_REG		(0x66)
++#define AW88399_BSTCTRL8_REG		(0x67)
++#define AW88399_BSTCTRL9_REG		(0x68)
++#define AW88399_BSTCTRL10_REG		(0x69)
++#define AW88399_CPCTRL_REG		(0x6A)
++#define AW88399_EFWH_REG		(0x6C)
++#define AW88399_EFWM2_REG		(0x6D)
++#define AW88399_EFWM1_REG		(0x6E)
++#define AW88399_EFWL_REG		(0x6F)
++#define AW88399_TESTCTRL1_REG		(0x70)
++#define AW88399_TESTCTRL2_REG		(0x71)
++#define AW88399_EFCTRL1_REG		(0x72)
++#define AW88399_EFCTRL2_REG		(0x73)
++#define AW88399_EFRH4_REG		(0x74)
++#define AW88399_EFRH3_REG		(0x75)
++#define AW88399_EFRH2_REG		(0x76)
++#define AW88399_EFRH1_REG		(0x77)
++#define AW88399_EFRL4_REG		(0x78)
++#define AW88399_EFRL3_REG		(0x79)
++#define AW88399_EFRL2_REG		(0x7A)
++#define AW88399_EFRL1_REG		(0x7B)
++#define AW88399_TM_REG			(0x7C)
++#define AW88399_TM2_REG		(0x7D)
++
++#define AW88399_REG_MAX		(0x7E)
++#define AW88399_MUTE_VOL		(1023)
++
++#define AW88399_DSP_CFG_ADDR		(0x9B00)
++#define AW88399_DSP_REG_CFG_ADPZ_RA	(0x9B68)
++#define AW88399_DSP_FW_ADDR		(0x8980)
++#define AW88399_DSP_ROM_CHECK_ADDR	(0x1F40)
++#define AW88399_DSP_ROM_CHECK_DATA	(0x4638)
++
++#define AW88399_CALI_RE_HBITS_MASK	(~(0xFFFF0000))
++#define AW88399_CALI_RE_HBITS_SHIFT	(16)
++
++#define AW88399_CALI_RE_LBITS_MASK	(~(0xFFFF))
++#define AW88399_CALI_RE_LBITS_SHIFT	(0)
++
++#define AW88399_I2STXEN_START_BIT	(9)
++#define AW88399_I2STXEN_BITS_LEN	(1)
++#define AW88399_I2STXEN_MASK		\
++	(~(((1<<AW88399_I2STXEN_BITS_LEN)-1) << AW88399_I2STXEN_START_BIT))
++
++#define AW88399_I2STXEN_DISABLE	(0)
++#define AW88399_I2STXEN_DISABLE_VALUE	\
++	(AW88399_I2STXEN_DISABLE << AW88399_I2STXEN_START_BIT)
++
++#define AW88399_I2STXEN_ENABLE		(1)
++#define AW88399_I2STXEN_ENABLE_VALUE	\
++	(AW88399_I2STXEN_ENABLE << AW88399_I2STXEN_START_BIT)
++
++#define AW88399_VOL_START_BIT		(0)
++#define AW88399_VOL_BITS_LEN		(10)
++#define AW88399_VOL_MASK		\
++	(~(((1<<AW88399_VOL_BITS_LEN)-1) << AW88399_VOL_START_BIT))
++
++#define AW88399_PWDN_START_BIT		(0)
++#define AW88399_PWDN_BITS_LEN		(1)
++#define AW88399_PWDN_MASK		\
++	(~(((1<<AW88399_PWDN_BITS_LEN)-1) << AW88399_PWDN_START_BIT))
++
++#define AW88399_PWDN_POWER_DOWN	(1)
++#define AW88399_PWDN_POWER_DOWN_VALUE	\
++	(AW88399_PWDN_POWER_DOWN << AW88399_PWDN_START_BIT)
++
++#define AW88399_PWDN_WORKING		(0)
++#define AW88399_PWDN_WORKING_VALUE	\
++	(AW88399_PWDN_WORKING << AW88399_PWDN_START_BIT)
++
++#define AW88399_DSPBY_START_BIT	(2)
++#define AW88399_DSPBY_BITS_LEN		(1)
++#define AW88399_DSPBY_MASK		\
++	(~(((1<<AW88399_DSPBY_BITS_LEN)-1) << AW88399_DSPBY_START_BIT))
++
++#define AW88399_DSPBY_WORKING		(0)
++#define AW88399_DSPBY_WORKING_VALUE	\
++	(AW88399_DSPBY_WORKING << AW88399_DSPBY_START_BIT)
++
++#define AW88399_DSPBY_BYPASS		(1)
++#define AW88399_DSPBY_BYPASS_VALUE	\
++	(AW88399_DSPBY_BYPASS << AW88399_DSPBY_START_BIT)
++
++#define AW88399_MEM_CLKSEL_START_BIT	(3)
++#define AW88399_MEM_CLKSEL_BITS_LEN	(1)
++#define AW88399_MEM_CLKSEL_MASK		\
++	(~(((1<<AW88399_MEM_CLKSEL_BITS_LEN)-1) << AW88399_MEM_CLKSEL_START_BIT))
++
++#define AW88399_MEM_CLKSEL_OSCCLK	(0)
++#define AW88399_MEM_CLKSEL_OSCCLK_VALUE	\
++	(AW88399_MEM_CLKSEL_OSCCLK << AW88399_MEM_CLKSEL_START_BIT)
++
++#define AW88399_MEM_CLKSEL_DAPHCLK	(1)
++#define AW88399_MEM_CLKSEL_DAPHCLK_VALUE	\
++	(AW88399_MEM_CLKSEL_DAPHCLK << AW88399_MEM_CLKSEL_START_BIT)
++
++#define AW88399_DITHER_EN_START_BIT	(15)
++#define AW88399_DITHER_EN_BITS_LEN	(1)
++#define AW88399_DITHER_EN_MASK		 \
++	(~(((1<<AW88399_DITHER_EN_BITS_LEN)-1) << AW88399_DITHER_EN_START_BIT))
++
++#define AW88399_DITHER_EN_DISABLE	(0)
++#define AW88399_DITHER_EN_DISABLE_VALUE	\
++	(AW88399_DITHER_EN_DISABLE << AW88399_DITHER_EN_START_BIT)
++
++#define AW88399_DITHER_EN_ENABLE	(1)
++#define AW88399_DITHER_EN_ENABLE_VALUE	\
++	(AW88399_DITHER_EN_ENABLE << AW88399_DITHER_EN_START_BIT)
++
++#define AW88399_HMUTE_START_BIT	(8)
++#define AW88399_HMUTE_BITS_LEN		(1)
++#define AW88399_HMUTE_MASK		\
++	(~(((1<<AW88399_HMUTE_BITS_LEN)-1) << AW88399_HMUTE_START_BIT))
++
++#define AW88399_HMUTE_DISABLE		(0)
++#define AW88399_HMUTE_DISABLE_VALUE	\
++	(AW88399_HMUTE_DISABLE << AW88399_HMUTE_START_BIT)
++
++#define AW88399_HMUTE_ENABLE		(1)
++#define AW88399_HMUTE_ENABLE_VALUE	\
++	(AW88399_HMUTE_ENABLE << AW88399_HMUTE_START_BIT)
++
++#define AW88399_EF_DBMD_START_BIT	(2)
++#define AW88399_EF_DBMD_BITS_LEN	(1)
++#define AW88399_EF_DBMD_MASK		\
++	(~(((1<<AW88399_EF_DBMD_BITS_LEN)-1) << AW88399_EF_DBMD_START_BIT))
++
++#define AW88399_EF_DBMD_OR		(1)
++#define AW88399_EF_DBMD_OR_VALUE	\
++	(AW88399_EF_DBMD_OR << AW88399_EF_DBMD_START_BIT)
++
++#define AW88399_VDSEL_START_BIT	(5)
++#define AW88399_VDSEL_BITS_LEN		(1)
++#define AW88399_VDSEL_MASK		\
++	(~(((1<<AW88399_VDSEL_BITS_LEN)-1) << AW88399_VDSEL_START_BIT))
++
++#define AW88399_EF_ISN_GESLP_H_START_BIT	(0)
++#define AW88399_EF_ISN_GESLP_H_BITS_LEN	(10)
++#define AW88399_EF_ISN_GESLP_H_MASK		\
++	(~(((1<<AW88399_EF_ISN_GESLP_H_BITS_LEN)-1) << AW88399_EF_ISN_GESLP_H_START_BIT))
++
++/* EF_VSN_GESLP_H bit 9:0 (EFRH3 0x75) */
++#define AW88399_EF_VSN_GESLP_H_START_BIT	(0)
++#define AW88399_EF_VSN_GESLP_H_BITS_LEN	(10)
++#define AW88399_EF_VSN_GESLP_H_MASK		\
++	(~(((1<<AW88399_EF_VSN_GESLP_H_BITS_LEN)-1) << AW88399_EF_VSN_GESLP_H_START_BIT))
++
++#define AW88399_EF_ISN_GESLP_L_START_BIT	(0)
++#define AW88399_EF_ISN_GESLP_L_BITS_LEN	(10)
++#define AW88399_EF_ISN_GESLP_L_MASK		\
++	(~(((1<<AW88399_EF_ISN_GESLP_L_BITS_LEN)-1) << AW88399_EF_ISN_GESLP_L_START_BIT))
++
++/* EF_VSN_GESLP_L bit 9:0 (EFRL3 0x79) */
++#define AW88399_EF_VSN_GESLP_L_START_BIT	(0)
++#define AW88399_EF_VSN_GESLP_L_BITS_LEN	(10)
++#define AW88399_EF_VSN_GESLP_L_MASK		\
++	(~(((1<<AW88399_EF_VSN_GESLP_L_BITS_LEN)-1) << AW88399_EF_VSN_GESLP_L_START_BIT))
++
++#define AW88399_INTERNAL_VSN_TRIM_H_START_BIT	(9)
++#define AW88399_INTERNAL_VSN_TRIM_H_BITS_LEN	(6)
++#define AW88399_INTERNAL_VSN_TRIM_H_MASK	\
++	(~(((1<<AW88399_INTERNAL_VSN_TRIM_H_BITS_LEN)-1) << AW88399_INTERNAL_VSN_TRIM_H_START_BIT))
++
++#define AW88399_INTERNAL_VSN_TRIM_L_START_BIT	(9)
++#define AW88399_INTERNAL_VSN_TRIM_L_BITS_LEN	(6)
++#define AW88399_INTERNAL_VSN_TRIM_L_MASK	\
++	(~(((1<<AW88399_INTERNAL_VSN_TRIM_L_BITS_LEN)-1) << AW88399_INTERNAL_VSN_TRIM_L_START_BIT))
++
++#define AW88399_RCV_MODE_START_BIT	(7)
++#define AW88399_RCV_MODE_BITS_LEN	(1)
++#define AW88399_RCV_MODE_MASK		\
++	(~(((1<<AW88399_RCV_MODE_BITS_LEN)-1) << AW88399_RCV_MODE_START_BIT))
++
++#define AW88399_CLKI_START_BIT		(4)
++#define AW88399_NOCLKI_START_BIT	(5)
++#define AW88399_PLLI_START_BIT		(0)
++#define AW88399_PLLI_INT_VALUE		(1)
++#define AW88399_PLLI_INT_INTERRUPT \
++	(AW88399_PLLI_INT_VALUE << AW88399_PLLI_START_BIT)
++
++#define AW88399_CLKI_INT_VALUE		(1)
++#define AW88399_CLKI_INT_INTERRUPT \
++	(AW88399_CLKI_INT_VALUE << AW88399_CLKI_START_BIT)
++
++#define AW88399_NOCLKI_INT_VALUE	(1)
++#define AW88399_NOCLKI_INT_INTERRUPT \
++	(AW88399_NOCLKI_INT_VALUE << AW88399_NOCLKI_START_BIT)
++
++#define AW88399_BIT_SYSINT_CHECK \
++		(AW88399_PLLI_INT_INTERRUPT | \
++		AW88399_CLKI_INT_INTERRUPT | \
++		AW88399_NOCLKI_INT_INTERRUPT)
++
++#define AW88399_CRC_CHECK_START_BIT	(12)
++#define AW88399_CRC_CHECK_BITS_LEN	(3)
++#define AW88399_CRC_CHECK_BITS_MASK	\
++	(~(((1<<AW88399_CRC_CHECK_BITS_LEN)-1) << AW88399_CRC_CHECK_START_BIT))
++
++#define AW88399_RCV_MODE_RECEIVER	(1)
++#define AW88399_RCV_MODE_RECEIVER_VALUE	\
++	(AW88399_RCV_MODE_RECEIVER << AW88399_RCV_MODE_START_BIT)
++
++#define AW88399_AMPPD_START_BIT	(1)
++#define AW88399_AMPPD_BITS_LEN		(1)
++#define AW88399_AMPPD_MASK		\
++	(~(((1<<AW88399_AMPPD_BITS_LEN)-1) << AW88399_AMPPD_START_BIT))
++
++#define AW88399_AMPPD_WORKING		(0)
++#define AW88399_AMPPD_WORKING_VALUE	\
++	(AW88399_AMPPD_WORKING << AW88399_AMPPD_START_BIT)
++
++#define AW88399_AMPPD_POWER_DOWN	(1)
++#define AW88399_AMPPD_POWER_DOWN_VALUE	\
++	(AW88399_AMPPD_POWER_DOWN << AW88399_AMPPD_START_BIT)
++
++#define AW88399_RAM_CG_BYP_START_BIT	(0)
++#define AW88399_RAM_CG_BYP_BITS_LEN	(1)
++#define AW88399_RAM_CG_BYP_MASK		\
++	(~(((1<<AW88399_RAM_CG_BYP_BITS_LEN)-1) << AW88399_RAM_CG_BYP_START_BIT))
++
++#define AW88399_RAM_CG_BYP_WORK	(0)
++#define AW88399_RAM_CG_BYP_WORK_VALUE	\
++	(AW88399_RAM_CG_BYP_WORK << AW88399_RAM_CG_BYP_START_BIT)
++
++#define AW88399_RAM_CG_BYP_BYPASS	(1)
++#define AW88399_RAM_CG_BYP_BYPASS_VALUE	\
++	(AW88399_RAM_CG_BYP_BYPASS << AW88399_RAM_CG_BYP_START_BIT)
++
++#define AW88399_CRC_END_ADDR_START_BIT	(0)
++#define AW88399_CRC_END_ADDR_BITS_LEN	(12)
++#define AW88399_CRC_END_ADDR_MASK	\
++	(~(((1<<AW88399_CRC_END_ADDR_BITS_LEN)-1) << AW88399_CRC_END_ADDR_START_BIT))
++
++#define AW88399_CRC_CODE_EN_START_BIT	(13)
++#define AW88399_CRC_CODE_EN_BITS_LEN	(1)
++#define AW88399_CRC_CODE_EN_MASK	\
++	(~(((1<<AW88399_CRC_CODE_EN_BITS_LEN)-1) << AW88399_CRC_CODE_EN_START_BIT))
++
++#define AW88399_CRC_CODE_EN_DISABLE	(0)
++#define AW88399_CRC_CODE_EN_DISABLE_VALUE	\
++	(AW88399_CRC_CODE_EN_DISABLE << AW88399_CRC_CODE_EN_START_BIT)
++
++#define AW88399_CRC_CODE_EN_ENABLE	(1)
++#define AW88399_CRC_CODE_EN_ENABLE_VALUE	\
++	(AW88399_CRC_CODE_EN_ENABLE << AW88399_CRC_CODE_EN_START_BIT)
++
++#define AW88399_CRC_CFG_EN_START_BIT	(12)
++#define AW88399_CRC_CFG_EN_BITS_LEN	(1)
++#define AW88399_CRC_CFG_EN_MASK		\
++	(~(((1<<AW88399_CRC_CFG_EN_BITS_LEN)-1) << AW88399_CRC_CFG_EN_START_BIT))
++
++#define AW88399_CRC_CFG_EN_DISABLE	(0)
++#define AW88399_CRC_CFG_EN_DISABLE_VALUE	\
++	(AW88399_CRC_CFG_EN_DISABLE << AW88399_CRC_CFG_EN_START_BIT)
++
++#define AW88399_CRC_CFG_EN_ENABLE	(1)
++#define AW88399_CRC_CFG_EN_ENABLE_VALUE	\
++	(AW88399_CRC_CFG_EN_ENABLE << AW88399_CRC_CFG_EN_START_BIT)
++
++#define AW88399_OCDS_START_BIT		(3)
++#define AW88399_OCDS_OC		(1)
++#define AW88399_OCDS_OC_VALUE		\
++	(AW88399_OCDS_OC << AW88399_OCDS_START_BIT)
++
++#define AW88399_NOCLKS_START_BIT	(5)
++#define AW88399_NOCLKS_NO_CLOCK	(1)
++#define AW88399_NOCLKS_NO_CLOCK_VALUE	\
++	(AW88399_NOCLKS_NO_CLOCK << AW88399_NOCLKS_START_BIT)
++
++#define AW88399_SWS_START_BIT		(8)
++#define AW88399_SWS_SWITCHING		(1)
++#define AW88399_SWS_SWITCHING_VALUE	\
++	(AW88399_SWS_SWITCHING << AW88399_SWS_START_BIT)
++
++#define AW88399_BSTS_START_BIT		(9)
++#define AW88399_BSTS_FINISHED		(1)
++#define AW88399_BSTS_FINISHED_VALUE	\
++	(AW88399_BSTS_FINISHED << AW88399_BSTS_START_BIT)
++
++#define AW88399_UVLS_START_BIT		(14)
++#define AW88399_UVLS_NORMAL		(0)
++#define AW88399_UVLS_NORMAL_VALUE	\
++	(AW88399_UVLS_NORMAL << AW88399_UVLS_START_BIT)
++
++#define AW88399_BSTOCS_START_BIT	(11)
++#define AW88399_BSTOCS_OVER_CURRENT	(1)
++#define AW88399_BSTOCS_OVER_CURRENT_VALUE	\
++	(AW88399_BSTOCS_OVER_CURRENT << AW88399_BSTOCS_START_BIT)
++
++#define AW88399_OTHS_START_BIT		(1)
++#define AW88399_OTHS_OT		(1)
++#define AW88399_OTHS_OT_VALUE		\
++	(AW88399_OTHS_OT << AW88399_OTHS_START_BIT)
++
++#define AW88399_PLLS_START_BIT		(0)
++#define AW88399_PLLS_LOCKED		(1)
++#define AW88399_PLLS_LOCKED_VALUE	\
++	(AW88399_PLLS_LOCKED << AW88399_PLLS_START_BIT)
++
++#define AW88399_CLKS_START_BIT		(4)
++#define AW88399_CLKS_STABLE		(1)
++#define AW88399_CLKS_STABLE_VALUE	\
++	(AW88399_CLKS_STABLE << AW88399_CLKS_START_BIT)
++
++#define AW88399_BIT_PLL_CHECK \
++		(AW88399_CLKS_STABLE_VALUE | \
++		AW88399_PLLS_LOCKED_VALUE)
++
++#define AW88399_BIT_SYSST_CHECK_MASK \
++		(~(AW88399_UVLS_NORMAL_VALUE | \
++		AW88399_BSTOCS_OVER_CURRENT_VALUE | \
++		AW88399_BSTS_FINISHED_VALUE | \
++		AW88399_SWS_SWITCHING_VALUE | \
++		AW88399_NOCLKS_NO_CLOCK_VALUE | \
++		AW88399_CLKS_STABLE_VALUE | \
++		AW88399_OCDS_OC_VALUE | \
++		AW88399_OTHS_OT_VALUE | \
++		AW88399_PLLS_LOCKED_VALUE))
++
++#define AW88399_BIT_SYSST_NOSWS_CHECK \
++		(AW88399_BSTS_FINISHED_VALUE | \
++		AW88399_CLKS_STABLE_VALUE | \
++		AW88399_PLLS_LOCKED_VALUE)
++
++#define AW88399_BIT_SYSST_SWS_CHECK \
++		(AW88399_BSTS_FINISHED_VALUE | \
++		AW88399_CLKS_STABLE_VALUE | \
++		AW88399_PLLS_LOCKED_VALUE | \
++		AW88399_SWS_SWITCHING_VALUE)
++
++#define AW88399_CCO_MUX_START_BIT	(14)
++#define AW88399_CCO_MUX_BITS_LEN	(1)
++#define AW88399_CCO_MUX_MASK		\
++	(~(((1<<AW88399_CCO_MUX_BITS_LEN)-1) << AW88399_CCO_MUX_START_BIT))
++
++#define AW88399_CCO_MUX_DIVIDED	(0)
++#define AW88399_CCO_MUX_DIVIDED_VALUE	\
++	(AW88399_CCO_MUX_DIVIDED << AW88399_CCO_MUX_START_BIT)
++
++#define AW88399_CCO_MUX_BYPASS		(1)
++#define AW88399_CCO_MUX_BYPASS_VALUE	\
++	(AW88399_CCO_MUX_BYPASS << AW88399_CCO_MUX_START_BIT)
++
++#define AW88399_NOISE_GATE_EN_START_BIT	(13)
++#define AW88399_NOISE_GATE_EN_BITS_LEN		(1)
++#define AW88399_NOISE_GATE_EN_MASK	\
++	(~(((1<<AW88399_NOISE_GATE_EN_BITS_LEN)-1) << AW88399_NOISE_GATE_EN_START_BIT))
++
++#define AW88399_WDT_CNT_START_BIT	(0)
++#define AW88399_WDT_CNT_BITS_LEN	(8)
++#define AW88399_WDT_CNT_MASK		\
++	(~(((1<<AW88399_WDT_CNT_BITS_LEN)-1) << AW88399_WDT_CNT_START_BIT))
++
++#define AW88399_REABS_START_BIT	(3)
++#define AW88399_REABS_BITS_LEN		(1)
++#define AW88399_REABS_MASK		\
++	(~(((1<<AW88399_REABS_BITS_LEN)-1) << AW88399_REABS_START_BIT))
++
++#define AW88399_DSP_VOL_START_BIT	(8)
++#define AW88399_DSP_VOL_BITS_LEN	(8)
++#define AW88399_DSP_VOL_MASK		\
++	(~(((1<<AW88399_DSP_VOL_BITS_LEN)-1) << AW88399_DSP_VOL_START_BIT))
++
++#define AW883XX_DSP_NG_EN_START	(13)
++#define AW883XX_DSP_NG_EN_LEN		(1)
++#define AW883XX_DSP_NG_EN_MASK		\
++	(~(((1 << AW883XX_DSP_NG_EN_LEN) - 1) << AW883XX_DSP_NG_EN_START))
++#define AW883XX_DSP_NG_EN_DISABLE	(0)
++#define AW883XX_DSP_NG_EN_DISABLE_VALUE	\
++	(AW883XX_DSP_NG_EN_DISABLE << AW883XX_DSP_NG_EN_START)
++
++#define AW88399_VOLUME_STEP_DB			(64)
++#define AW88399_VOL_DEFAULT_VALUE		(0)
++#define AW88399_DSP_ODD_NUM_BIT_TEST		(0x5555)
++#define AW88399_EF_ISN_GESLP_SIGN_MASK		(~(1 << 9))
++#define AW88399_EF_ISN_GESLP_SIGN_NEG		(0xfe00)
++
++#define AW88399_EF_VSN_GESLP_SIGN_MASK		(~(1 << 9))
++#define AW88399_EF_VSN_GESLP_SIGN_NEG		(0xfe00)
++
++#define AW88399_TEM4_SIGN_MASK			(~(1 << 5))
++#define AW88399_TEM4_SIGN_NEG			(0xffc0)
++
++#define AW88399_ICABLK_FACTOR			(1)
++#define AW88399_VCABLK_FACTOR			(1)
++#define AW88399_VCABLK_DAC_FACTOR		(2)
++
++#define AW88399_VCALB_ADJ_FACTOR		(12)
++#define AW88399_VCALB_ACCURACY			(1 << 12)
++
++#define AW88399_ISCAL_FACTOR			(3125)
++#define AW88399_VSCAL_FACTOR			(18875)
++#define AW88399_ISCAL_DAC_FACTOR		(3125)
++#define AW88399_VSCAL_DAC_FACTOR		(12600)
++#define AW88399_CABL_BASE_VALUE		(1000)
++
++#define AW88399_DEV_DEFAULT_CH			(0)
++#define AW88399_DEV_DSP_CHECK_MAX		(5)
++#define AW88399_MAX_RAM_WRITE_BYTE_SIZE	(128)
++#define AW88399_DSP_RE_SHIFT			(12)
++#define AW88399_CALI_RE_MAX			(15000)
++#define AW88399_CALI_RE_MIN			(4000)
++#define AW_FW_ADDR_LEN				(4)
++#define AW88399_DSP_RE_TO_SHOW_RE(re, shift)	(((re) * (1000)) >> (shift))
++#define AW88399_SHOW_RE_TO_DSP_RE(re, shift)	(((re) << shift) / (1000))
++#define AW88399_CRC_CHECK_PASS_VAL		(0x4)
++
++#define AW88399_CRC_CFG_BASE_ADDR		(0xD80)
++#define AW88399_CRC_FW_BASE_ADDR		(0x4C0)
++#define AW88399_ACF_FILE			"aw88399_acf.bin"
++#define AW88399_DEV_SYSST_CHECK_MAX		(10)
++#define AW88399_CHIP_ID			0x2183
++
++#define AW88399_START_RETRIES			(5)
++#define AW88399_START_WORK_DELAY_MS		(0)
++
++enum {
++	AW_EF_AND_CHECK = 0,
++	AW_EF_OR_CHECK,
++};
++
++enum {
++	AW88399_DEV_VDSEL_DAC = 0,
++	AW88399_DEV_VDSEL_VSENSE = 32,
++};
++
++enum {
++	AW88399_DSP_CRC_NA = 0,
++	AW88399_DSP_CRC_OK = 1,
++};
++
++enum {
++	AW88399_DSP_FW_UPDATE_OFF = 0,
++	AW88399_DSP_FW_UPDATE_ON = 1,
++};
++
++enum {
++	AW88399_FORCE_UPDATE_OFF = 0,
++	AW88399_FORCE_UPDATE_ON = 1,
++};
++
++enum {
++	AW88399_1000_US = 1000,
++	AW88399_2000_US = 2000,
++	AW88399_3000_US = 3000,
++	AW88399_4000_US = 4000,
++};
++
++enum AW88399_DEV_STATUS {
++	AW88399_DEV_PW_OFF = 0,
++	AW88399_DEV_PW_ON,
++};
++
++enum AW88399_DEV_FW_STATUS {
++	AW88399_DEV_FW_FAILED = 0,
++	AW88399_DEV_FW_OK,
++};
++
++enum AW88399_DEV_MEMCLK {
++	AW88399_DEV_MEMCLK_OSC = 0,
++	AW88399_DEV_MEMCLK_PLL = 1,
++};
++
++enum AW88399_DEV_DSP_CFG {
++	AW88399_DEV_DSP_WORK = 0,
++	AW88399_DEV_DSP_BYPASS = 1,
++};
++
++enum {
++	AW88399_NOT_RCV_MODE = 0,
++	AW88399_RCV_MODE = 1,
++};
++
++enum {
++	AW88399_SYNC_START = 0,
++	AW88399_ASYNC_START,
++};
++
++struct aw_device;
++struct aw_container;
++struct aw_cali_desc;
++struct gpio_desc;
++struct i2c_client;
++struct regmap;
++
++struct aw88399 {
++	struct aw_device *aw_pa;
++	struct mutex lock;
++	struct gpio_desc *reset_gpio;
++	struct delayed_work start_work;
++	struct regmap *regmap;
++	struct aw_container *aw_cfg;
++
++	unsigned int check_val;
++	unsigned int crc_init_val;
++	unsigned int vcalb_init_val;
++	unsigned int dither_st;
++	bool bsts_unreliable;
++	bool fw_needs_reload;
++};
++
++int aw_dev_check_syspll(struct aw_device *aw_dev);
++void aw_dev_dsp_enable(struct aw_device *aw_dev, bool is_enable);
++int aw_dev_get_dsp_status(struct aw_device *aw_dev);
++int aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value);
++int aw_dev_update_cali_re(struct aw_cali_desc *cali_desc);
++int aw88399_dev_get_prof_name(struct aw_device *aw_dev, int index, char **prof_name);
++void aw88399_dev_mute(struct aw_device *aw_dev, bool is_mute);
++void aw88399_dev_set_channel(struct aw88399 *aw88399, int channel);
++void aw88399_hw_reset(struct aw88399 *aw88399);
++int aw88399_init(struct aw88399 *aw88399, struct i2c_client *i2c, struct regmap *regmap);
++extern const struct regmap_config aw88399_remap_config;
++int aw88399_request_firmware_file(struct aw88399 *aw88399);
++void aw88399_start(struct aw88399 *aw88399, bool sync_start);
++void aw88399_startup_work(struct work_struct *work);
++int aw88399_stop(struct aw_device *aw_dev);
++
++#endif /* __SOUND_AW88399_H */
+diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_series/sound/hda/codecs/realtek/alc269.c
+--- linux-7.1.4/sound/hda/codecs/realtek/alc269.c	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/sound/hda/codecs/realtek/alc269.c	2026-07-20 11:49:16.497238745 +0200
+@@ -3262,6 +3262,34 @@ static void find_cirrus_companion_amps(s
+ 	comp_generic_fixup(cdc, HDA_FIXUP_ACT_PRE_PROBE, bus, acpi_ids[i].hid, match, count);
+ }
+ 
++static void aw88399_fixup_i2c_two(struct hda_codec *cdc, const struct hda_fixup *fix, int action)
++{
++	comp_generic_fixup(cdc, action, "i2c", "AWDZ8399", "-%s:00-aw88399-hda.%d", 2);
++}
++
++static void alc287_fixup_legion_16iax10h_aw88399(struct hda_codec *codec,
++						 const struct hda_fixup *fix, int action)
++{
++	static const struct hda_pintbl pincfgs[] = {
++		{ 0x1d, 0x411111f0 }, /* unused bogus pin */
++		{ }
++	};
++
++	/*
++	 * Force DAC 0x02 for the bass speaker 0x17, as the default 0x06 lacks volume controls.
++	 */
++	static const hda_nid_t conn[] = { 0x02 };
++
++	alc269_fixup_limit_int_mic_boost(codec, fix, action);
++
++	switch (action) {
++	case HDA_FIXUP_ACT_PRE_PROBE:
++		snd_hda_apply_pincfgs(codec, pincfgs);
++		snd_hda_override_conn_list(codec, 0x17, ARRAY_SIZE(conn), conn);
++		break;
++	}
++}
++
+ static void cs35l41_fixup_i2c_two(struct hda_codec *cdc, const struct hda_fixup *fix, int action)
+ {
+ 	comp_generic_fixup(cdc, action, "i2c", "CSC3551", "-%s:00-cs35l41-hda.%d", 2);
+@@ -4155,6 +4183,8 @@ enum {
+ 	ALC236_FIXUP_HP_DMIC,
+ 	ALC256_FIXUP_HONOR_MRB_XXX_M1020_AUDIO,
+ 	ALC245_FIXUP_HP_ENVY_X360_15_FH0XXX,
++	ALC287_FIXUP_AW88399_I2C_2,
++	ALC287_FIXUP_LENOVO_LEGION_AW88399,
+ };
+ 
+ /* A special fixup for Lenovo C940 and Yoga Duet 7;
+@@ -6727,7 +6757,17 @@ static const struct hda_fixup alc269_fix
+ 		.v.func = cs35l41_fixup_i2c_two,
+ 		.chained = true,
+ 		.chain_id = ALC245_FIXUP_HP_X360_MUTE_LEDS
+-	}
++	},
++	[ALC287_FIXUP_AW88399_I2C_2] = {
++		.type = HDA_FIXUP_FUNC,
++		.v.func = aw88399_fixup_i2c_two,
++	},
++	[ALC287_FIXUP_LENOVO_LEGION_AW88399] = {
++		.type = HDA_FIXUP_FUNC,
++		.v.func = alc287_fixup_legion_16iax10h_aw88399,
++		.chained = true,
++		.chain_id = ALC287_FIXUP_AW88399_I2C_2,
++	},
+ };
+ 
+ static const struct hda_quirk alc269_fixup_tbl[] = {
+@@ -7750,6 +7790,11 @@ static const struct hda_quirk alc269_fix
+ 	SND_PCI_QUIRK(0x17aa, 0x38b8, "Yoga S780-14.5 proX AMD YC Dual", ALC287_FIXUP_TAS2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x38b9, "Yoga S780-14.5 proX AMD LX Dual", ALC287_FIXUP_TAS2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x38ba, "Yoga S780-14.5 Air AMD quad YC", ALC287_FIXUP_TAS2781_I2C),
++	/* Legion R9000P ADR10 shares PCI SSID 17aa:38bb with Yoga S780-14.5 Air AMD quad AAC;
++	 * use codec SSID to distinguish them
++	 */
++	HDA_CODEC_QUIRK(0x17aa, 0x3927, "Legion R9000P ADR10", ALC287_FIXUP_LENOVO_LEGION_AW88399),
++	HDA_CODEC_QUIRK(0x17aa, 0x3928, "Legion R9000P ADR10", ALC287_FIXUP_LENOVO_LEGION_AW88399),
+ 	SND_PCI_QUIRK(0x17aa, 0x38bb, "Yoga S780-14.5 Air AMD quad AAC", ALC287_FIXUP_TAS2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x38be, "Yoga S980-14.5 proX YC Dual", ALC287_FIXUP_TAS2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x38bf, "Yoga S980-14.5 proX LX Dual", ALC287_FIXUP_TAS2781_I2C),
+@@ -7773,6 +7818,8 @@ static const struct hda_quirk alc269_fix
+ 	SND_PCI_QUIRK(0x17aa, 0x38fc, "Lenovo Yoga Pro 7 15ASH11", ALC245_FIXUP_BASS_HP_DAC),
+ 	SND_PCI_QUIRK(0x17aa, 0x38fd, "ThinkBook plus Gen5 Hybrid", ALC287_FIXUP_TAS2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x3902, "Lenovo E50-80", ALC269_FIXUP_DMIC_THINKPAD_ACPI),
++	HDA_CODEC_QUIRK(0x17aa, 0x3906, "Legion Pro 7i 16IAX10H / Y9000P IAX10", ALC287_FIXUP_LENOVO_LEGION_AW88399),
++	HDA_CODEC_QUIRK(0x17aa, 0x3907, "Legion Pro 7i 16IAX10H / Y9000P IAX10", ALC287_FIXUP_LENOVO_LEGION_AW88399),
+ 	SND_PCI_QUIRK(0x17aa, 0x390d, "Lenovo Yoga Pro 7 14ASP10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	SND_PCI_QUIRK(0x17aa, 0x3911, "Lenovo Yoga Pro 7 14IAH10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	SND_PCI_QUIRK(0x17aa, 0x3913, "Lenovo 145", ALC236_FIXUP_LENOVO_INV_DMIC),
+@@ -7781,6 +7828,8 @@ static const struct hda_quirk alc269_fix
+ 	SND_PCI_QUIRK(0x17aa, 0x3920, "Yoga S990-16 pro Quad VECO Quad", ALC287_FIXUP_TXNW2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x3929, "Thinkbook 13x Gen 5", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD),
+ 	SND_PCI_QUIRK(0x17aa, 0x392b, "Thinkbook 13x Gen 5", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD),
++	HDA_CODEC_QUIRK(0x17aa, 0x3938, "Legion Pro 7 16AFR10H", ALC287_FIXUP_LENOVO_LEGION_AW88399),
++	HDA_CODEC_QUIRK(0x17aa, 0x3939, "Legion Pro 7 16AFR10H", ALC287_FIXUP_LENOVO_LEGION_AW88399),
+ 	HDA_CODEC_QUIRK(0x17aa, 0x394c, "Lenovo Yoga Slim 7 14AGP11", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	SND_PCI_QUIRK(0x17aa, 0x3977, "IdeaPad S210", ALC283_FIXUP_INT_MIC),
+ 	SND_PCI_QUIRK(0x17aa, 0x3978, "Lenovo B50-70", ALC269_FIXUP_DMIC_THINKPAD_ACPI),
+@@ -8074,6 +8123,7 @@ static const struct hda_model_fixup alc2
+ 	{.id = ALC2XX_FIXUP_HEADSET_MIC, .name = "alc2xx-fixup-headset-mic"},
+ 	{.id = ALC245_FIXUP_BASS_HP_DAC, .name = "alc245-fixup-bass-hp-dac"},
+ 	{.id = ALC256_FIXUP_HONOR_MRB_XXX_M1020_AUDIO, .name = "alc256-honor-mrb-xxx-m1020-audio"},
++	{.id = ALC287_FIXUP_LENOVO_LEGION_AW88399, .name = "alc287-lenovo-legion-aw88399"},
+ 	{}
+ };
+ #define ALC225_STANDARD_PINS \
+diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.c
+--- linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.c	2026-07-20 11:49:16.497854835 +0200
+@@ -0,0 +1,371 @@
++// SPDX-License-Identifier: GPL-2.0-only
++//
++// AW88399 HDA side codec driver
++//
++// Based on cs35l41_hda.c and aw88399.c
++//
++
++#include <linux/acpi.h>
++#include <linux/gpio/consumer.h>
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/pm_runtime.h>
++#include <linux/string.h>
++#include <sound/hda_codec.h>
++#include "../generic.h"
++#include "hda_component.h"
++#include "aw88399_hda.h"
++
++#define AW88399_HDA_I2C_BASE_ADDR	0x34
++
++static void aw88399_hda_playback_hook(struct device *dev, int action)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++	struct aw88399 *core = aw88399->core;
++	int ret = 0;
++
++	dev_dbg(aw88399->dev, "Playback action: %d\n", action);
++
++	switch (action) {
++	case HDA_GEN_PCM_ACT_OPEN:
++		pm_runtime_get_sync(dev);
++		aw88399->playing = true;
++		break;
++	case HDA_GEN_PCM_ACT_PREPARE:
++		if (core)
++			aw88399_start(core, AW88399_SYNC_START);
++		break;
++	case HDA_GEN_PCM_ACT_CLEANUP:
++		if (aw88399->aw_dev)
++			ret = aw88399_stop(aw88399->aw_dev);
++		if (ret)
++			dev_err(aw88399->dev, "Failed to stop amplifier: %d\n", ret);
++		break;
++	case HDA_GEN_PCM_ACT_CLOSE:
++		if (aw88399->aw_dev)
++			aw88399_stop(aw88399->aw_dev);
++		aw88399->playing = false;
++		pm_runtime_mark_last_busy(dev);
++		pm_runtime_put_autosuspend(dev);
++		break;
++	default:
++		dev_warn(aw88399->dev, "Unsupported action: %d\n", action);
++		break;
++	}
++}
++
++static int aw88399_hda_bind(struct device *dev, struct device *master, void *master_data)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++	struct hda_component_parent *parent = master_data;
++	struct hda_component *comp;
++
++	comp = hda_component_from_index(parent, aw88399->index);
++	if (!comp)
++		return -EINVAL;
++
++	if (comp->dev)
++		return -EBUSY;
++
++	comp->dev = dev;
++
++	strscpy(comp->name, dev_name(dev), sizeof(comp->name));
++
++	comp->playback_hook = aw88399_hda_playback_hook;
++
++	dev_info(aw88399->dev,
++		 "AW88399 Bound - SSID: %s, channel: %d\n",
++		 aw88399->acpi_subsystem_id, aw88399->channel);
++
++	return 0;
++}
++
++static void aw88399_hda_unbind(struct device *dev, struct device *master, void *master_data)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++	struct hda_component_parent *parent = master_data;
++	struct hda_component *comp;
++
++	comp = hda_component_from_index(parent, aw88399->index);
++	if (comp && (comp->dev == dev))
++		memset(comp, 0, sizeof(*comp));
++
++	dev_dbg(aw88399->dev, "Unbound from HDA codec\n");
++}
++
++static const struct component_ops aw88399_hda_comp_ops = {
++	.bind = aw88399_hda_bind,
++	.unbind = aw88399_hda_unbind,
++};
++
++static int aw88399_hda_index_from_i2c(struct aw88399_hda *aw88399)
++{
++	return to_i2c_client(aw88399->dev)->addr - AW88399_HDA_I2C_BASE_ADDR;
++}
++
++static int aw88399_hda_init(struct aw88399_hda *aw88399)
++{
++	struct device *dev = aw88399->dev;
++	struct i2c_client *i2c = to_i2c_client(dev);
++	struct aw88399 *core;
++	int ret;
++
++	core = devm_kzalloc(dev, sizeof(*core), GFP_KERNEL);
++	if (!core)
++		return -ENOMEM;
++
++	mutex_init(&core->lock);
++	core->reset_gpio = aw88399->reset_gpio;
++	core->regmap = aw88399->regmap;
++	core->bsts_unreliable = aw88399->bsts_unreliable;
++
++	aw88399_hw_reset(core);
++
++	ret = aw88399_init(core, i2c, aw88399->regmap);
++	if (ret)
++		return ret;
++
++	/* Set channel BEFORE loading firmware so ACF parser sees correct value */
++	if (core->aw_pa)
++		aw88399_dev_set_channel(core, aw88399->channel);
++
++	ret = aw88399_request_firmware_file(core);
++	if (ret)
++		return ret;
++
++	aw88399->core = core;
++	aw88399->aw_dev = core->aw_pa;
++
++	return 0;
++}
++
++static int aw88399_swap_channels(struct aw88399_hda *aw88399)
++{
++	/*
++	 * Certain Lenovo Legion laptops have their
++	 * I2C wiring reversed: 0x34 is physically the right speaker,
++	 * 0x35 is the left. Swap channels to correct L/R assignment.
++	 * This is a model-specific hardware wiring issue, not a driver bug.
++	 */
++	aw88399->channel = 1 - aw88399->channel;
++	dev_dbg(aw88399->dev,
++		"Channel swap applied: index %d -> channel %d\n",
++		aw88399->index, aw88399->channel);
++	return 0;
++}
++
++static int aw88399_skip_bsts_check(struct aw88399_hda *aw88399)
++{
++	/*
++	 * BSTS (boost-finished) status bit does not reliably report on
++	 * some hardware. On certain Lenovo Legion laptops, both amps
++	 * report BSTS=0 (boost not finished) during normal playback
++	 * despite clean audio output. Skip BSTS in the startup status
++	 * check to avoid false init failures.
++	 */
++	aw88399->bsts_unreliable = true;
++	dev_dbg(aw88399->dev, "BSTS status check disabled\n");
++	return 0;
++}
++
++static int aw88399_apply_legion_quirks(struct aw88399_hda *aw88399)
++{
++	aw88399_swap_channels(aw88399);
++	aw88399_skip_bsts_check(aw88399);
++	return 0;
++}
++
++struct aw88399_prop_model {
++	const char *ssid;
++	int (*apply_prop)(struct aw88399_hda *aw88399);
++};
++
++static const struct aw88399_prop_model aw88399_prop_model_table[] = {
++	{ "17AA3906", aw88399_apply_legion_quirks },
++	{ "17AA3907", aw88399_apply_legion_quirks },
++	{ "17AA3927", aw88399_apply_legion_quirks },
++	{ "17AA3928", aw88399_apply_legion_quirks },
++	{ "17AA3938", aw88399_apply_legion_quirks },
++	{ "17AA3939", aw88399_apply_legion_quirks },
++	{ }
++};
++
++static int aw88399_hda_acpi_probe(struct aw88399_hda *aw88399)
++{
++	struct acpi_device *adev;
++	struct device *physdev;
++	const char *sub;
++	const struct aw88399_prop_model *model;
++
++	aw88399->index = aw88399_hda_index_from_i2c(aw88399);
++	aw88399->channel = aw88399->index;
++	aw88399->acpi_subsystem_id = NULL;
++
++	adev = acpi_dev_get_first_match_dev("AWDZ8399", NULL, -1);
++
++	if (!adev) {
++		dev_err(aw88399->dev, "Failed to find an ACPI device for AWDZ8399\n");
++		return -ENODEV;
++	}
++
++	physdev = get_device(acpi_get_first_physical_node(adev));
++	acpi_dev_put(adev);
++
++	if (!physdev)
++		return -ENODEV;
++
++	sub = acpi_get_subsystem_id(ACPI_HANDLE(physdev));
++	put_device(physdev);
++	if (!IS_ERR_OR_NULL(sub))
++		aw88399->acpi_subsystem_id = sub;
++
++	if (aw88399->acpi_subsystem_id) {
++		for (model = aw88399_prop_model_table; model->ssid; model++) {
++			if (!strcasecmp(model->ssid, aw88399->acpi_subsystem_id)) {
++				dev_info(aw88399->dev,
++					 "Applying properties for SSID %s\n",
++					 aw88399->acpi_subsystem_id);
++				return model->apply_prop(aw88399);
++			}
++		}
++	}
++	return 0;
++}
++
++int aw88399_hda_probe(struct device *dev, struct regmap *regmap)
++{
++	struct aw88399_hda *aw88399;
++	int ret;
++
++	aw88399 = devm_kzalloc(dev, sizeof(*aw88399), GFP_KERNEL);
++	if (!aw88399)
++		return -ENOMEM;
++
++	if (IS_ERR(regmap))
++		return dev_err_probe(dev, PTR_ERR(regmap), "Failed to obtain regmap\n");
++
++	aw88399->dev = dev;
++	aw88399->regmap = regmap;
++	dev_set_drvdata(dev, aw88399);
++
++	aw88399->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(aw88399->reset_gpio))
++		return dev_err_probe(dev, PTR_ERR(aw88399->reset_gpio),
++				     "Failed to get reset GPIO\n");
++
++	ret = aw88399_hda_acpi_probe(aw88399);
++	if (ret)
++		return dev_err_probe(dev, ret, "ACPI probe failed\n");
++
++	ret = aw88399_hda_init(aw88399);
++	if (ret)
++		return dev_err_probe(dev, ret, "Chip initialization failed\n");
++
++	/* Enable runtime PM */
++	pm_runtime_set_autosuspend_delay(dev, 3000);
++	pm_runtime_use_autosuspend(dev);
++	pm_runtime_mark_last_busy(dev);
++	pm_runtime_set_active(dev);
++	pm_runtime_enable(dev);
++
++	ret = component_add(dev, &aw88399_hda_comp_ops);
++	if (ret) {
++		pm_runtime_disable(dev);
++		return dev_err_probe(dev, ret, "Failed to register component\n");
++	}
++
++	dev_info(dev, "AW88399 HDA side codec registered successfully\n");
++
++	return 0;
++}
++EXPORT_SYMBOL_NS_GPL(aw88399_hda_probe, "SND_HDA_SCODEC_AW88399");
++
++void aw88399_hda_remove(struct device *dev)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++
++	pm_runtime_disable(dev);
++
++	if (aw88399->aw_dev)
++		aw88399_stop(aw88399->aw_dev);
++
++	component_del(dev, &aw88399_hda_comp_ops);
++	kfree(aw88399->acpi_subsystem_id);
++
++	dev_dbg(aw88399->dev, "AW88399 HDA side codec removed\n");
++}
++EXPORT_SYMBOL_NS_GPL(aw88399_hda_remove, "SND_HDA_SCODEC_AW88399");
++
++static int aw88399_hda_runtime_suspend(struct device *dev)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++
++	dev_dbg(aw88399->dev, "Runtime suspend\n");
++
++	if (aw88399->aw_dev && aw88399->playing)
++		aw88399_stop(aw88399->aw_dev);
++
++	return 0;
++}
++
++static int aw88399_hda_runtime_resume(struct device *dev)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++
++	dev_dbg(aw88399->dev, "Runtime resume\n");
++
++	if (aw88399->core && aw88399->aw_dev && aw88399->playing)
++		aw88399_start(aw88399->core, AW88399_SYNC_START);
++
++	return 0;
++}
++
++static int aw88399_hda_system_suspend(struct device *dev)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++	int ret;
++
++	dev_dbg(aw88399->dev, "System suspend\n");
++
++	if (aw88399->aw_dev && aw88399->playing)
++		aw88399_stop(aw88399->aw_dev);
++
++	if (aw88399->core)
++		aw88399->core->fw_needs_reload = true;
++
++	ret = pm_runtime_force_suspend(dev);
++	if (ret)
++		dev_err(aw88399->dev, "Runtime force suspend failed: %d\n", ret);
++
++	return ret;
++}
++
++static int aw88399_hda_system_resume(struct device *dev)
++{
++	struct aw88399_hda *aw88399 = dev_get_drvdata(dev);
++	int ret;
++
++	dev_dbg(aw88399->dev, "System resume\n");
++
++	if (aw88399->aw_dev)
++		aw88399_hw_reset(aw88399->core);
++
++	ret = pm_runtime_force_resume(dev);
++	if (ret)
++		dev_err(aw88399->dev, "Runtime force resume failed: %d\n", ret);
++
++	return ret;
++}
++
++const struct dev_pm_ops aw88399_hda_pm_ops = {
++	RUNTIME_PM_OPS(aw88399_hda_runtime_suspend, aw88399_hda_runtime_resume, NULL)
++	SYSTEM_SLEEP_PM_OPS(aw88399_hda_system_suspend, aw88399_hda_system_resume)
++};
++EXPORT_SYMBOL_NS_GPL(aw88399_hda_pm_ops, "SND_HDA_SCODEC_AW88399");
++
++MODULE_DESCRIPTION("AW88399 HDA driver");
++MODULE_AUTHOR("Yakov Till <yakov.till@gmail.com>");
++MODULE_AUTHOR("Marco Giunta <marco_giunta@outlook.it>");
++MODULE_LICENSE("GPL");
++MODULE_FIRMWARE("aw88399_acf.bin");
+diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.h linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.h
+--- linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.h	2026-07-20 11:49:16.497931960 +0200
+@@ -0,0 +1,36 @@
++/* SPDX-License-Identifier: GPL-2.0-only
++ *
++ * AW88399 HDA side codec driver
++ */
++
++#ifndef __AW88399_HDA_H__
++#define __AW88399_HDA_H__
++
++#include <linux/device.h>
++#include <linux/gpio/consumer.h>
++#include <sound/aw88399.h>
++
++struct aw88399;
++struct aw_device;
++
++struct aw88399_hda {
++	struct device *dev;
++	struct regmap *regmap;
++	struct gpio_desc *reset_gpio;
++	struct aw_device *aw_dev;
++	struct aw88399 *core;
++	bool bsts_unreliable;
++
++	const char *acpi_subsystem_id;
++	int index;
++	int channel;
++
++	bool playing;
++};
++
++int aw88399_hda_probe(struct device *dev, struct regmap *regmap);
++void aw88399_hda_remove(struct device *dev);
++
++extern const struct dev_pm_ops aw88399_hda_pm_ops;
++
++#endif /* __AW88399_HDA_H__ */
+diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c
+--- linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	2026-07-20 11:49:16.497990029 +0200
+@@ -0,0 +1,54 @@
++// SPDX-License-Identifier: GPL-2.0-only
++//
++// AW88399 HDA I2C driver
++//
++// Based on cs35l41_hda_i2c.c
++//
++
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/regmap.h>
++
++#include "aw88399_hda.h"
++
++static int aw88399_hda_i2c_probe(struct i2c_client *clt)
++{
++	if (!strstr(dev_name(&clt->dev), "AWDZ8399"))
++		return -ENODEV;
++
++	return aw88399_hda_probe(&clt->dev,
++				 devm_regmap_init_i2c(clt, &aw88399_remap_config));
++}
++
++static void aw88399_hda_i2c_remove(struct i2c_client *clt)
++{
++	aw88399_hda_remove(&clt->dev);
++}
++
++static const struct i2c_device_id aw88399_hda_i2c_id[] = {
++	{ .name = "aw88399-hda" },
++	{ }
++};
++
++static const struct acpi_device_id aw88399_acpi_hda_match[] = {
++	{ "AWDZ8399", 0 },
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, aw88399_acpi_hda_match);
++
++static struct i2c_driver aw88399_hda_i2c_driver = {
++	.driver = {
++		.name		= "aw88399-hda",
++		.acpi_match_table = aw88399_acpi_hda_match,
++		.pm		= &aw88399_hda_pm_ops,
++	},
++	.probe		= aw88399_hda_i2c_probe,
++	.remove		= aw88399_hda_i2c_remove,
++	.id_table	= aw88399_hda_i2c_id,
++};
++module_i2c_driver(aw88399_hda_i2c_driver);
++
++MODULE_DESCRIPTION("HDA AW88399 I2C driver");
++MODULE_IMPORT_NS("SND_HDA_SCODEC_AW88399");
++MODULE_AUTHOR("Yakov Till <yakov.till@gmail.com>");
++MODULE_LICENSE("GPL");
+diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/Kconfig linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Kconfig
+--- linux-7.1.4/sound/hda/codecs/side-codecs/Kconfig	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Kconfig	2026-07-20 11:49:16.498091661 +0200
+@@ -13,6 +13,24 @@ config SND_HDA_CIRRUS_SCODEC_KUNIT_TEST
+ 	  Documentation/dev-tools/kunit/.
+ 	  If in doubt, say "N".
+ 
++config SND_HDA_SCODEC_AW88399
++	tristate
++	select SND_HDA_GENERIC
++
++config SND_HDA_SCODEC_AW88399_I2C
++	tristate "Build AW88399 HD-audio side codec support for I2C Bus"
++	depends on I2C
++	depends on ACPI
++	depends on SND_SOC
++	select SND_HDA_SCODEC_AW88399
++	select SND_SOC_AW88399_LIB
++	help
++	  Say Y or M here to include AW88399 I2C HD-audio side codec support
++	  in snd-hda-intel driver, such as ALC287.
++
++comment "Set to Y if you want auto-loading the side codec driver"
++	depends on SND_HDA=y && SND_HDA_SCODEC_AW88399_I2C=m
++
+ config SND_HDA_SCODEC_CS35L41
+ 	tristate
+ 	select SND_HDA_GENERIC
+diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/Makefile linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Makefile
+--- linux-7.1.4/sound/hda/codecs/side-codecs/Makefile	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Makefile	2026-07-20 11:49:16.498338555 +0200
+@@ -3,6 +3,8 @@ subdir-ccflags-y += -I$(src)/../../commo
+ 
+ snd-hda-cirrus-scodec-y :=	cirrus_scodec.o
+ snd-hda-cirrus-scodec-test-y :=	cirrus_scodec_test.o
++snd-hda-scodec-aw88399-y :=	aw88399_hda.o
++snd-hda-scodec-aw88399-i2c-y :=	aw88399_hda_i2c.o
+ snd-hda-scodec-cs35l41-y :=	cs35l41_hda.o cs35l41_hda_property.o
+ snd-hda-scodec-cs35l41-i2c-y :=	cs35l41_hda_i2c.o
+ snd-hda-scodec-cs35l41-spi-y :=	cs35l41_hda_spi.o
+@@ -16,6 +18,8 @@ snd-hda-scodec-tas2781-spi-y :=	tas2781_
+ 
+ obj-$(CONFIG_SND_HDA_CIRRUS_SCODEC) += snd-hda-cirrus-scodec.o
+ obj-$(CONFIG_SND_HDA_CIRRUS_SCODEC_KUNIT_TEST) += snd-hda-cirrus-scodec-test.o
++obj-$(CONFIG_SND_HDA_SCODEC_AW88399) += snd-hda-scodec-aw88399.o
++obj-$(CONFIG_SND_HDA_SCODEC_AW88399_I2C) += snd-hda-scodec-aw88399-i2c.o
+ obj-$(CONFIG_SND_HDA_SCODEC_CS35L41) += snd-hda-scodec-cs35l41.o
+ obj-$(CONFIG_SND_HDA_SCODEC_CS35L41_I2C) += snd-hda-scodec-cs35l41-i2c.o
+ obj-$(CONFIG_SND_HDA_SCODEC_CS35L41_SPI) += snd-hda-scodec-cs35l41-spi.o
+diff -rupN linux-7.1.4/sound/soc/codecs/aw88399.c linux-7.1.4_patch_series/sound/soc/codecs/aw88399.c
+--- linux-7.1.4/sound/soc/codecs/aw88399.c	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/sound/soc/codecs/aw88399.c	2026-07-20 11:49:16.499007906 +0200
+@@ -10,1217 +10,12 @@
+ #include <linux/crc32.h>
+ #include <linux/gpio/consumer.h>
+ #include <linux/i2c.h>
+-#include <linux/firmware.h>
+-#include <linux/minmax.h>
+ #include <linux/regmap.h>
+ #include <linux/sort.h>
+ #include <sound/soc.h>
+ #include "aw88399.h"
+ #include "aw88395/aw88395_device.h"
+ 
+-static const struct regmap_config aw88399_remap_config = {
+-	.val_bits = 16,
+-	.reg_bits = 8,
+-	.max_register = AW88399_REG_MAX,
+-	.reg_format_endian = REGMAP_ENDIAN_LITTLE,
+-	.val_format_endian = REGMAP_ENDIAN_BIG,
+-};
+-
+-static void aw_dev_pwd(struct aw_device *aw_dev, bool pwd)
+-{
+-	int ret;
+-
+-	if (pwd)
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-				~AW88399_PWDN_MASK, AW88399_PWDN_POWER_DOWN_VALUE);
+-	else
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-				~AW88399_PWDN_MASK, AW88399_PWDN_WORKING_VALUE);
+-
+-	if (ret)
+-		dev_dbg(aw_dev->dev, "%s failed", __func__);
+-}
+-
+-static void aw_dev_get_int_status(struct aw_device *aw_dev, unsigned short *int_status)
+-{
+-	unsigned int reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_SYSINT_REG, &reg_val);
+-	if (ret)
+-		dev_err(aw_dev->dev, "read interrupt reg fail, ret=%d", ret);
+-	else
+-		*int_status = reg_val;
+-
+-	dev_dbg(aw_dev->dev, "read interrupt reg=0x%04x", *int_status);
+-}
+-
+-static void aw_dev_clear_int_status(struct aw_device *aw_dev)
+-{
+-	u16 int_status;
+-
+-	/* read int status and clear */
+-	aw_dev_get_int_status(aw_dev, &int_status);
+-	/* make sure int status is clear */
+-	aw_dev_get_int_status(aw_dev, &int_status);
+-	if (int_status)
+-		dev_dbg(aw_dev->dev, "int status(%d) is not cleaned.\n", int_status);
+-}
+-
+-static int aw_dev_get_iis_status(struct aw_device *aw_dev)
+-{
+-	unsigned int reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_SYSST_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-	if ((reg_val & AW88399_BIT_PLL_CHECK) != AW88399_BIT_PLL_CHECK) {
+-		dev_err(aw_dev->dev, "check pll lock fail, reg_val:0x%04x", reg_val);
+-		return -EINVAL;
+-	}
+-
+-	return 0;
+-}
+-
+-static int aw_dev_check_mode1_pll(struct aw_device *aw_dev)
+-{
+-	int ret, i;
+-
+-	for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
+-		ret = aw_dev_get_iis_status(aw_dev);
+-		if (ret) {
+-			dev_err(aw_dev->dev, "mode1 iis signal check error");
+-			usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-		} else {
+-			return 0;
+-		}
+-	}
+-
+-	return -EPERM;
+-}
+-
+-static int aw_dev_check_mode2_pll(struct aw_device *aw_dev)
+-{
+-	unsigned int reg_val;
+-	int ret, i;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_PLLCTRL2_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-
+-	reg_val &= (~AW88399_CCO_MUX_MASK);
+-	if (reg_val == AW88399_CCO_MUX_DIVIDED_VALUE) {
+-		dev_dbg(aw_dev->dev, "CCO_MUX is already divider");
+-		return -EPERM;
+-	}
+-
+-	/* change mode2 */
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_PLLCTRL2_REG,
+-			~AW88399_CCO_MUX_MASK, AW88399_CCO_MUX_DIVIDED_VALUE);
+-	if (ret)
+-		return ret;
+-
+-	for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
+-		ret = aw_dev_get_iis_status(aw_dev);
+-		if (ret) {
+-			dev_err(aw_dev->dev, "mode2 iis signal check error");
+-			usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-		} else {
+-			break;
+-		}
+-	}
+-
+-	/* change mode1 */
+-	regmap_update_bits(aw_dev->regmap, AW88399_PLLCTRL2_REG,
+-			~AW88399_CCO_MUX_MASK, AW88399_CCO_MUX_BYPASS_VALUE);
+-	if (ret == 0) {
+-		usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-		for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
+-			ret = aw_dev_get_iis_status(aw_dev);
+-			if (ret) {
+-				dev_err(aw_dev->dev, "mode2 switch to mode1, iis signal check error");
+-				usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-			} else {
+-				break;
+-			}
+-		}
+-	}
+-
+-	return ret;
+-}
+-
+-static int aw_dev_check_syspll(struct aw_device *aw_dev)
+-{
+-	int ret;
+-
+-	ret = aw_dev_check_mode1_pll(aw_dev);
+-	if (ret) {
+-		dev_dbg(aw_dev->dev, "mode1 check iis failed try switch to mode2 check");
+-		ret = aw_dev_check_mode2_pll(aw_dev);
+-		if (ret) {
+-			dev_err(aw_dev->dev, "mode2 check iis failed");
+-			return ret;
+-		}
+-	}
+-
+-	return 0;
+-}
+-
+-static int aw_dev_check_sysst(struct aw_device *aw_dev)
+-{
+-	unsigned int check_val;
+-	unsigned int reg_val;
+-	int ret, i;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_PWMCTRL3_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-
+-	if (reg_val & (~AW88399_NOISE_GATE_EN_MASK))
+-		check_val = AW88399_BIT_SYSST_NOSWS_CHECK;
+-	else
+-		check_val = AW88399_BIT_SYSST_SWS_CHECK;
+-
+-	for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
+-		ret = regmap_read(aw_dev->regmap, AW88399_SYSST_REG, &reg_val);
+-		if (ret)
+-			return ret;
+-
+-		if ((reg_val & (~AW88399_BIT_SYSST_CHECK_MASK) & check_val) != check_val) {
+-			dev_err(aw_dev->dev, "check sysst fail, cnt=%d, reg_val=0x%04x, check:0x%x",
+-				i, reg_val, AW88399_BIT_SYSST_NOSWS_CHECK);
+-			usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-		} else {
+-			return 0;
+-		}
+-	}
+-
+-	return -EPERM;
+-}
+-
+-static void aw_dev_amppd(struct aw_device *aw_dev, bool amppd)
+-{
+-	int ret;
+-
+-	if (amppd)
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-				~AW88399_AMPPD_MASK, AW88399_AMPPD_POWER_DOWN_VALUE);
+-	else
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-				~AW88399_AMPPD_MASK, AW88399_AMPPD_WORKING_VALUE);
+-
+-	if (ret)
+-		dev_dbg(aw_dev->dev, "%s failed", __func__);
+-}
+-
+-static void aw_dev_dsp_enable(struct aw_device *aw_dev, bool is_enable)
+-{
+-	int ret;
+-
+-	if (is_enable)
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-					~AW88399_DSPBY_MASK, AW88399_DSPBY_WORKING_VALUE);
+-	else
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-					~AW88399_DSPBY_MASK, AW88399_DSPBY_BYPASS_VALUE);
+-
+-	if (ret)
+-		dev_dbg(aw_dev->dev, "%s failed\n", __func__);
+-}
+-
+-static int aw88399_dev_get_icalk(struct aw88399 *aw88399, int16_t *icalk)
+-{
+-	uint16_t icalkh_val, icalkl_val, icalk_val;
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	unsigned int reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_EFRH4_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-	icalkh_val = reg_val & (~AW88399_EF_ISN_GESLP_H_MASK);
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_EFRL4_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-	icalkl_val = reg_val & (~AW88399_EF_ISN_GESLP_L_MASK);
+-
+-	if (aw88399->check_val == AW_EF_AND_CHECK)
+-		icalk_val = icalkh_val & icalkl_val;
+-	else
+-		icalk_val = icalkh_val | icalkl_val;
+-
+-	if (icalk_val & (~AW88399_EF_ISN_GESLP_SIGN_MASK))
+-		icalk_val = icalk_val | AW88399_EF_ISN_GESLP_SIGN_NEG;
+-	*icalk = (int16_t)icalk_val;
+-
+-	return 0;
+-}
+-
+-static int aw88399_dev_get_vcalk(struct aw88399 *aw88399, int16_t *vcalk)
+-{
+-	uint16_t vcalkh_val, vcalkl_val, vcalk_val;
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	unsigned int reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_EFRH3_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-
+-	vcalkh_val = reg_val & (~AW88399_EF_VSN_GESLP_H_MASK);
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_EFRL3_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-
+-	vcalkl_val = reg_val & (~AW88399_EF_VSN_GESLP_L_MASK);
+-
+-	if (aw88399->check_val == AW_EF_AND_CHECK)
+-		vcalk_val = vcalkh_val & vcalkl_val;
+-	else
+-		vcalk_val = vcalkh_val | vcalkl_val;
+-
+-	if (vcalk_val & AW88399_EF_VSN_GESLP_SIGN_MASK)
+-		vcalk_val = vcalk_val | AW88399_EF_VSN_GESLP_SIGN_NEG;
+-	*vcalk = (int16_t)vcalk_val;
+-
+-	return 0;
+-}
+-
+-static int aw88399_dev_get_internal_vcalk(struct aw88399 *aw88399, int16_t *vcalk)
+-{
+-	uint16_t vcalkh_val, vcalkl_val, vcalk_val;
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	unsigned int reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_EFRH2_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-	vcalkh_val = reg_val & (~AW88399_INTERNAL_VSN_TRIM_H_MASK);
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_EFRL2_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-	vcalkl_val = reg_val & (~AW88399_INTERNAL_VSN_TRIM_L_MASK);
+-
+-	if (aw88399->check_val == AW_EF_AND_CHECK)
+-		vcalk_val = (vcalkh_val >> AW88399_INTERNAL_VSN_TRIM_H_START_BIT) &
+-				(vcalkl_val >> AW88399_INTERNAL_VSN_TRIM_L_START_BIT);
+-	else
+-		vcalk_val = (vcalkh_val >> AW88399_INTERNAL_VSN_TRIM_H_START_BIT) |
+-				(vcalkl_val >> AW88399_INTERNAL_VSN_TRIM_L_START_BIT);
+-
+-	if (vcalk_val & (~AW88399_TEM4_SIGN_MASK))
+-		vcalk_val = vcalk_val | AW88399_TEM4_SIGN_NEG;
+-
+-	*vcalk = (int16_t)vcalk_val;
+-
+-	return 0;
+-}
+-
+-static int aw_dev_set_vcalb(struct aw88399 *aw88399)
+-{
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	unsigned int vsense_select, vsense_value;
+-	int32_t ical_k, vcal_k, vcalb;
+-	int16_t icalk, vcalk;
+-	uint16_t reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_VSNCTRL1_REG, &vsense_value);
+-	if (ret)
+-		return ret;
+-
+-	vsense_select = vsense_value & (~AW88399_VDSEL_MASK);
+-
+-	ret = aw88399_dev_get_icalk(aw88399, &icalk);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "get icalk failed\n");
+-		return ret;
+-	}
+-
+-	ical_k = icalk * AW88399_ICABLK_FACTOR + AW88399_CABL_BASE_VALUE;
+-
+-	switch (vsense_select) {
+-	case AW88399_DEV_VDSEL_VSENSE:
+-		ret = aw88399_dev_get_vcalk(aw88399, &vcalk);
+-		vcal_k = vcalk * AW88399_VCABLK_FACTOR + AW88399_CABL_BASE_VALUE;
+-		vcalb = AW88399_VCALB_ACCURACY * AW88399_VSCAL_FACTOR / AW88399_ISCAL_FACTOR *
+-			ical_k / vcal_k * aw88399->vcalb_init_val;
+-		break;
+-	case AW88399_DEV_VDSEL_DAC:
+-		ret = aw88399_dev_get_internal_vcalk(aw88399, &vcalk);
+-		vcal_k = vcalk * AW88399_VCABLK_DAC_FACTOR + AW88399_CABL_BASE_VALUE;
+-		vcalb = AW88399_VCALB_ACCURACY * AW88399_VSCAL_DAC_FACTOR /
+-					AW88399_ISCAL_DAC_FACTOR * ical_k /
+-					vcal_k * aw88399->vcalb_init_val;
+-		break;
+-	default:
+-		dev_err(aw_dev->dev, "%s: unsupported vsense\n", __func__);
+-		ret = -EINVAL;
+-		break;
+-	}
+-	if (ret)
+-		return ret;
+-
+-	vcalb = vcalb >> AW88399_VCALB_ADJ_FACTOR;
+-	reg_val = (uint32_t)vcalb;
+-
+-	regmap_write(aw_dev->regmap, AW88399_DSPVCALB_REG, reg_val);
+-
+-	return 0;
+-}
+-
+-static int aw_dev_update_cali_re(struct aw_cali_desc *cali_desc)
+-{
+-	struct aw_device *aw_dev =
+-		container_of(cali_desc, struct aw_device, cali_desc);
+-	uint16_t re_lbits, re_hbits;
+-	u32 cali_re;
+-	int ret;
+-
+-	if ((aw_dev->cali_desc.cali_re >= AW88399_CALI_RE_MAX) ||
+-			(aw_dev->cali_desc.cali_re <= AW88399_CALI_RE_MIN))
+-		return -EINVAL;
+-
+-	cali_re = AW88399_SHOW_RE_TO_DSP_RE((aw_dev->cali_desc.cali_re +
+-				aw_dev->cali_desc.ra), AW88399_DSP_RE_SHIFT);
+-
+-	re_hbits = (cali_re & (~AW88399_CALI_RE_HBITS_MASK)) >> AW88399_CALI_RE_HBITS_SHIFT;
+-	re_lbits = (cali_re & (~AW88399_CALI_RE_LBITS_MASK)) >> AW88399_CALI_RE_LBITS_SHIFT;
+-
+-	ret = regmap_write(aw_dev->regmap, AW88399_ACR1_REG, re_hbits);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "set cali re error");
+-		return ret;
+-	}
+-
+-	ret = regmap_write(aw_dev->regmap, AW88399_ACR2_REG, re_lbits);
+-	if (ret)
+-		dev_err(aw_dev->dev, "set cali re error");
+-
+-	return ret;
+-}
+-
+-static int aw_dev_fw_crc_check(struct aw_device *aw_dev)
+-{
+-	uint16_t check_val, fw_len_val;
+-	unsigned int reg_val;
+-	int ret;
+-
+-	/* calculate fw_end_addr */
+-	fw_len_val = ((aw_dev->dsp_fw_len / AW_FW_ADDR_LEN) - 1) + AW88399_CRC_FW_BASE_ADDR;
+-
+-	/* write fw_end_addr to crc_end_addr */
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
+-					~AW88399_CRC_END_ADDR_MASK, fw_len_val);
+-	if (ret)
+-		return ret;
+-	/* enable fw crc check */
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
+-		~AW88399_CRC_CODE_EN_MASK, AW88399_CRC_CODE_EN_ENABLE_VALUE);
+-
+-	usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-
+-	/* read crc check result */
+-	regmap_read(aw_dev->regmap, AW88399_HAGCST_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-
+-	check_val = (reg_val & (~AW88399_CRC_CHECK_BITS_MASK)) >> AW88399_CRC_CHECK_START_BIT;
+-
+-	/* disable fw crc check */
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
+-		~AW88399_CRC_CODE_EN_MASK, AW88399_CRC_CODE_EN_DISABLE_VALUE);
+-	if (ret)
+-		return ret;
+-
+-	if (check_val != AW88399_CRC_CHECK_PASS_VAL) {
+-		dev_err(aw_dev->dev, "%s failed, check_val 0x%x != 0x%x",
+-				__func__, check_val, AW88399_CRC_CHECK_PASS_VAL);
+-		ret = -EINVAL;
+-	}
+-
+-	return ret;
+-}
+-
+-static int aw_dev_cfg_crc_check(struct aw_device *aw_dev)
+-{
+-	uint16_t check_val, cfg_len_val;
+-	unsigned int reg_val;
+-	int ret;
+-
+-	/* calculate cfg end addr */
+-	cfg_len_val = ((aw_dev->dsp_cfg_len / AW_FW_ADDR_LEN) - 1) + AW88399_CRC_CFG_BASE_ADDR;
+-
+-	/* write cfg_end_addr to crc_end_addr */
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
+-				~AW88399_CRC_END_ADDR_MASK, cfg_len_val);
+-	if (ret)
+-		return ret;
+-
+-	/* enable cfg crc check */
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
+-			~AW88399_CRC_CFG_EN_MASK, AW88399_CRC_CFG_EN_ENABLE_VALUE);
+-	if (ret)
+-		return ret;
+-
+-	usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
+-
+-	/* read crc check result */
+-	ret = regmap_read(aw_dev->regmap, AW88399_HAGCST_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-
+-	check_val = (reg_val & (~AW88399_CRC_CHECK_BITS_MASK)) >> AW88399_CRC_CHECK_START_BIT;
+-
+-	/* disable cfg crc check */
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
+-			~AW88399_CRC_CFG_EN_MASK, AW88399_CRC_CFG_EN_DISABLE_VALUE);
+-	if (ret)
+-		return ret;
+-
+-	if (check_val != AW88399_CRC_CHECK_PASS_VAL) {
+-		dev_err(aw_dev->dev, "crc_check failed, check val 0x%x != 0x%x",
+-						check_val, AW88399_CRC_CHECK_PASS_VAL);
+-		ret = -EINVAL;
+-	}
+-
+-	return ret;
+-}
+-
+-static int aw_dev_hw_crc_check(struct aw88399 *aw88399)
+-{
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	int ret;
+-
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
+-		~AW88399_RAM_CG_BYP_MASK, AW88399_RAM_CG_BYP_BYPASS_VALUE);
+-	if (ret)
+-		return ret;
+-
+-	ret = aw_dev_fw_crc_check(aw_dev);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "fw_crc_check failed\n");
+-		goto crc_check_failed;
+-	}
+-
+-	ret = aw_dev_cfg_crc_check(aw_dev);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "cfg_crc_check failed\n");
+-		goto crc_check_failed;
+-	}
+-
+-	ret = regmap_write(aw_dev->regmap, AW88399_CRCCTRL_REG, aw88399->crc_init_val);
+-	if (ret)
+-		return ret;
+-
+-	ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
+-		~AW88399_RAM_CG_BYP_MASK, AW88399_RAM_CG_BYP_WORK_VALUE);
+-
+-	return ret;
+-
+-crc_check_failed:
+-	regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
+-		~AW88399_RAM_CG_BYP_MASK, AW88399_RAM_CG_BYP_WORK_VALUE);
+-	return ret;
+-}
+-
+-static void aw_dev_i2s_tx_enable(struct aw_device *aw_dev, bool flag)
+-{
+-	int ret;
+-
+-	if (flag)
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCTRL3_REG,
+-			~AW88399_I2STXEN_MASK, AW88399_I2STXEN_ENABLE_VALUE);
+-	else
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
+-			~AW88399_I2STXEN_MASK, AW88399_I2STXEN_DISABLE_VALUE);
+-
+-	if (ret)
+-		dev_dbg(aw_dev->dev, "%s failed", __func__);
+-}
+-
+-static int aw_dev_get_dsp_status(struct aw_device *aw_dev)
+-{
+-	unsigned int reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_WDT_REG, &reg_val);
+-	if (ret)
+-		return ret;
+-	if (!(reg_val & (~AW88399_WDT_CNT_MASK)))
+-		return -EPERM;
+-
+-	return 0;
+-}
+-
+-static int aw_dev_dsp_check(struct aw_device *aw_dev)
+-{
+-	int ret, i;
+-
+-	switch (aw_dev->dsp_cfg) {
+-	case AW88399_DEV_DSP_BYPASS:
+-		dev_dbg(aw_dev->dev, "dsp bypass");
+-		ret = 0;
+-		break;
+-	case AW88399_DEV_DSP_WORK:
+-		aw_dev_dsp_enable(aw_dev, false);
+-		aw_dev_dsp_enable(aw_dev, true);
+-		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
+-		for (i = 0; i < AW88399_DEV_DSP_CHECK_MAX; i++) {
+-			ret = aw_dev_get_dsp_status(aw_dev);
+-			if (ret) {
+-				dev_err(aw_dev->dev, "dsp wdt status error=%d", ret);
+-				usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-			}
+-		}
+-		break;
+-	default:
+-		dev_err(aw_dev->dev, "unknown dsp cfg=%d", aw_dev->dsp_cfg);
+-		ret = -EINVAL;
+-		break;
+-	}
+-
+-	return ret;
+-}
+-
+-static int aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value)
+-{
+-	struct aw_volume_desc *vol_desc = &aw_dev->volume_desc;
+-	unsigned int reg_value;
+-	u16 real_value;
+-	int ret;
+-
+-	real_value = min((value + vol_desc->init_volume), (unsigned int)AW88399_MUTE_VOL);
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_SYSCTRL2_REG, &reg_value);
+-	if (ret)
+-		return ret;
+-
+-	dev_dbg(aw_dev->dev, "value 0x%x , reg:0x%x", value, real_value);
+-
+-	real_value = (real_value << AW88399_VOL_START_BIT) | (reg_value & AW88399_VOL_MASK);
+-
+-	ret = regmap_write(aw_dev->regmap, AW88399_SYSCTRL2_REG, real_value);
+-
+-	return ret;
+-}
+-
+-static void aw_dev_fade_in(struct aw_device *aw_dev)
+-{
+-	struct aw_volume_desc *desc = &aw_dev->volume_desc;
+-	u16 fade_in_vol = desc->ctl_volume;
+-	int fade_step = aw_dev->fade_step;
+-	int i;
+-
+-	if (fade_step == 0 || aw_dev->fade_in_time == 0) {
+-		aw_dev_set_volume(aw_dev, fade_in_vol);
+-		return;
+-	}
+-
+-	for (i = AW88399_MUTE_VOL; i >= fade_in_vol; i -= fade_step) {
+-		aw_dev_set_volume(aw_dev, i);
+-		usleep_range(aw_dev->fade_in_time, aw_dev->fade_in_time + 10);
+-	}
+-
+-	if (i != fade_in_vol)
+-		aw_dev_set_volume(aw_dev, fade_in_vol);
+-}
+-
+-static void aw_dev_fade_out(struct aw_device *aw_dev)
+-{
+-	struct aw_volume_desc *desc = &aw_dev->volume_desc;
+-	int fade_step = aw_dev->fade_step;
+-	int i;
+-
+-	if (fade_step == 0 || aw_dev->fade_out_time == 0) {
+-		aw_dev_set_volume(aw_dev, AW88399_MUTE_VOL);
+-		return;
+-	}
+-
+-	for (i = desc->ctl_volume; i <= AW88399_MUTE_VOL; i += fade_step) {
+-		aw_dev_set_volume(aw_dev, i);
+-		usleep_range(aw_dev->fade_out_time, aw_dev->fade_out_time + 10);
+-	}
+-
+-	if (i != AW88399_MUTE_VOL) {
+-		aw_dev_set_volume(aw_dev, AW88399_MUTE_VOL);
+-		usleep_range(aw_dev->fade_out_time, aw_dev->fade_out_time + 10);
+-	}
+-}
+-
+-static void aw88399_dev_mute(struct aw_device *aw_dev, bool is_mute)
+-{
+-	if (is_mute) {
+-		aw_dev_fade_out(aw_dev);
+-		regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-				~AW88399_HMUTE_MASK, AW88399_HMUTE_ENABLE_VALUE);
+-	} else {
+-		regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
+-				~AW88399_HMUTE_MASK, AW88399_HMUTE_DISABLE_VALUE);
+-		aw_dev_fade_in(aw_dev);
+-	}
+-}
+-
+-static void aw88399_dev_set_dither(struct aw88399 *aw88399, bool dither)
+-{
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-
+-	if (dither)
+-		regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
+-				~AW88399_DITHER_EN_MASK, AW88399_DITHER_EN_ENABLE_VALUE);
+-	else
+-		regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
+-				~AW88399_DITHER_EN_MASK, AW88399_DITHER_EN_DISABLE_VALUE);
+-}
+-
+-static int aw88399_dev_start(struct aw88399 *aw88399)
+-{
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	int ret;
+-
+-	if (aw_dev->status == AW88399_DEV_PW_ON) {
+-		dev_dbg(aw_dev->dev, "already power on");
+-		return 0;
+-	}
+-
+-	aw88399_dev_set_dither(aw88399, false);
+-
+-	/* power on */
+-	aw_dev_pwd(aw_dev, false);
+-	usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
+-
+-	ret = aw_dev_check_syspll(aw_dev);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "pll check failed cannot start");
+-		goto pll_check_fail;
+-	}
+-
+-	/* amppd on */
+-	aw_dev_amppd(aw_dev, false);
+-	usleep_range(AW88399_1000_US, AW88399_1000_US + 50);
+-
+-	/* check i2s status */
+-	ret = aw_dev_check_sysst(aw_dev);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "sysst check failed");
+-		goto sysst_check_fail;
+-	}
+-
+-	if (aw_dev->dsp_cfg == AW88399_DEV_DSP_WORK) {
+-		ret = aw_dev_hw_crc_check(aw88399);
+-		if (ret) {
+-			dev_err(aw_dev->dev, "dsp crc check failed");
+-			goto crc_check_fail;
+-		}
+-		aw_dev_dsp_enable(aw_dev, false);
+-		aw_dev_set_vcalb(aw88399);
+-		aw_dev_update_cali_re(&aw_dev->cali_desc);
+-
+-		ret = aw_dev_dsp_check(aw_dev);
+-		if (ret) {
+-			dev_err(aw_dev->dev, "dsp status check failed");
+-			goto dsp_check_fail;
+-		}
+-	} else {
+-		dev_dbg(aw_dev->dev, "start pa with dsp bypass");
+-	}
+-
+-	/* enable tx feedback */
+-	aw_dev_i2s_tx_enable(aw_dev, true);
+-
+-	if (aw88399->dither_st == AW88399_DITHER_EN_ENABLE_VALUE)
+-		aw88399_dev_set_dither(aw88399, true);
+-
+-	/* close mute */
+-	aw88399_dev_mute(aw_dev, false);
+-	/* clear inturrupt */
+-	aw_dev_clear_int_status(aw_dev);
+-	aw_dev->status = AW88399_DEV_PW_ON;
+-
+-	return 0;
+-
+-dsp_check_fail:
+-crc_check_fail:
+-	aw_dev_dsp_enable(aw_dev, false);
+-sysst_check_fail:
+-	aw_dev_clear_int_status(aw_dev);
+-	aw_dev_amppd(aw_dev, true);
+-pll_check_fail:
+-	aw_dev_pwd(aw_dev, true);
+-	aw_dev->status = AW88399_DEV_PW_OFF;
+-
+-	return ret;
+-}
+-
+-static int aw_dev_dsp_update_container(struct aw_device *aw_dev,
+-			unsigned char *data, unsigned int len, unsigned short base)
+-{
+-	u32 tmp_len;
+-	int i, ret;
+-
+-	ret = regmap_write(aw_dev->regmap, AW88399_DSPMADD_REG, base);
+-	if (ret)
+-		return ret;
+-
+-	for (i = 0; i < len; i += AW88399_MAX_RAM_WRITE_BYTE_SIZE) {
+-		tmp_len = min(len - i, AW88399_MAX_RAM_WRITE_BYTE_SIZE);
+-		ret = regmap_raw_write(aw_dev->regmap, AW88399_DSPMDAT_REG,
+-					&data[i], tmp_len);
+-		if (ret)
+-			return ret;
+-	}
+-
+-	return 0;
+-}
+-
+-static int aw_dev_get_ra(struct aw_cali_desc *cali_desc)
+-{
+-	struct aw_device *aw_dev =
+-		container_of(cali_desc, struct aw_device, cali_desc);
+-	u32 dsp_ra;
+-	int ret;
+-
+-	ret = aw_dev_dsp_read(aw_dev, AW88399_DSP_REG_CFG_ADPZ_RA,
+-				&dsp_ra, AW_DSP_32_DATA);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "read ra error");
+-		return ret;
+-	}
+-
+-	cali_desc->ra = AW88399_DSP_RE_TO_SHOW_RE(dsp_ra,
+-					AW88399_DSP_RE_SHIFT);
+-
+-	return 0;
+-}
+-
+-static int aw_dev_dsp_update_cfg(struct aw_device *aw_dev,
+-			unsigned char *data, unsigned int len)
+-{
+-	int ret;
+-
+-	dev_dbg(aw_dev->dev, "dsp config len:%d", len);
+-
+-	if (!len || !data) {
+-		dev_err(aw_dev->dev, "dsp config data is null or len is 0");
+-		return -EINVAL;
+-	}
+-
+-	ret = aw_dev_dsp_update_container(aw_dev, data, len, AW88399_DSP_CFG_ADDR);
+-	if (ret)
+-		return ret;
+-
+-	aw_dev->dsp_cfg_len = len;
+-
+-	ret = aw_dev_get_ra(&aw_dev->cali_desc);
+-
+-	return ret;
+-}
+-
+-static int aw_dev_dsp_update_fw(struct aw_device *aw_dev,
+-			unsigned char *data, unsigned int len)
+-{
+-	int ret;
+-
+-	dev_dbg(aw_dev->dev, "dsp firmware len:%d", len);
+-
+-	if (!len || !data) {
+-		dev_err(aw_dev->dev, "dsp firmware data is null or len is 0");
+-		return -EINVAL;
+-	}
+-
+-	aw_dev->dsp_fw_len = len;
+-	ret = aw_dev_dsp_update_container(aw_dev, data, len, AW88399_DSP_FW_ADDR);
+-
+-	return ret;
+-}
+-
+-static int aw_dev_check_sram(struct aw_device *aw_dev)
+-{
+-	unsigned int reg_val;
+-
+-	/* read dsp_rom_check_reg */
+-	aw_dev_dsp_read(aw_dev, AW88399_DSP_ROM_CHECK_ADDR, &reg_val, AW_DSP_16_DATA);
+-	if (reg_val != AW88399_DSP_ROM_CHECK_DATA) {
+-		dev_err(aw_dev->dev, "check dsp rom failed, read[0x%x] != check[0x%x]",
+-						reg_val, AW88399_DSP_ROM_CHECK_DATA);
+-		return -EPERM;
+-	}
+-
+-	/* check dsp_cfg_base_addr */
+-	aw_dev_dsp_write(aw_dev, AW88399_DSP_CFG_ADDR,
+-				AW88399_DSP_ODD_NUM_BIT_TEST, AW_DSP_16_DATA);
+-	aw_dev_dsp_read(aw_dev, AW88399_DSP_CFG_ADDR, &reg_val, AW_DSP_16_DATA);
+-	if (reg_val != AW88399_DSP_ODD_NUM_BIT_TEST) {
+-		dev_err(aw_dev->dev, "check dsp cfg failed, read[0x%x] != write[0x%x]",
+-						reg_val, AW88399_DSP_ODD_NUM_BIT_TEST);
+-		return -EPERM;
+-	}
+-
+-	return 0;
+-}
+-
+-static void aw_dev_select_memclk(struct aw_device *aw_dev, unsigned char flag)
+-{
+-	int ret;
+-
+-	switch (flag) {
+-	case AW88399_DEV_MEMCLK_PLL:
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
+-					~AW88399_MEM_CLKSEL_MASK,
+-					AW88399_MEM_CLKSEL_DAPHCLK_VALUE);
+-		if (ret)
+-			dev_err(aw_dev->dev, "memclk select pll failed");
+-		break;
+-	case AW88399_DEV_MEMCLK_OSC:
+-		ret = regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
+-					~AW88399_MEM_CLKSEL_MASK,
+-					AW88399_MEM_CLKSEL_OSCCLK_VALUE);
+-		if (ret)
+-			dev_err(aw_dev->dev, "memclk select OSC failed");
+-		break;
+-	default:
+-		dev_err(aw_dev->dev, "unknown memclk config, flag=0x%x", flag);
+-		break;
+-	}
+-}
+-
+-static void aw_dev_get_cur_mode_st(struct aw_device *aw_dev)
+-{
+-	struct aw_profctrl_desc *profctrl_desc = &aw_dev->profctrl_desc;
+-	unsigned int reg_val;
+-	int ret;
+-
+-	ret = regmap_read(aw_dev->regmap, AW88399_SYSCTRL_REG, &reg_val);
+-	if (ret) {
+-		dev_dbg(aw_dev->dev, "%s failed", __func__);
+-		return;
+-	}
+-	if ((reg_val & (~AW88399_RCV_MODE_MASK)) == AW88399_RCV_MODE_RECEIVER_VALUE)
+-		profctrl_desc->cur_mode = AW88399_RCV_MODE;
+-	else
+-		profctrl_desc->cur_mode = AW88399_NOT_RCV_MODE;
+-}
+-
+-static int aw_dev_update_reg_container(struct aw88399 *aw88399,
+-				unsigned char *data, unsigned int len)
+-{
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	struct aw_volume_desc *vol_desc = &aw_dev->volume_desc;
+-	u16 read_vol, reg_val;
+-	int data_len, i, ret;
+-	int16_t *reg_data;
+-	u8 reg_addr;
+-
+-	reg_data = (int16_t *)data;
+-	data_len = len >> 1;
+-
+-	if (data_len & 0x1) {
+-		dev_err(aw_dev->dev, "data len:%d unsupported",	data_len);
+-		return -EINVAL;
+-	}
+-
+-	for (i = 0; i < data_len; i += 2) {
+-		reg_addr = reg_data[i];
+-		reg_val = reg_data[i + 1];
+-
+-		if (reg_addr == AW88399_DSPVCALB_REG) {
+-			aw88399->vcalb_init_val = reg_val;
+-			continue;
+-		}
+-
+-		if (reg_addr == AW88399_SYSCTRL_REG) {
+-			if (reg_val & (~AW88399_DSPBY_MASK))
+-				aw_dev->dsp_cfg = AW88399_DEV_DSP_BYPASS;
+-			else
+-				aw_dev->dsp_cfg = AW88399_DEV_DSP_WORK;
+-
+-			reg_val &= (AW88399_HMUTE_MASK | AW88399_PWDN_MASK |
+-						AW88399_DSPBY_MASK);
+-			reg_val |= (AW88399_HMUTE_ENABLE_VALUE | AW88399_PWDN_POWER_DOWN_VALUE |
+-						AW88399_DSPBY_BYPASS_VALUE);
+-		}
+-
+-		if (reg_addr == AW88399_I2SCTRL3_REG) {
+-			reg_val &= AW88399_I2STXEN_MASK;
+-			reg_val |= AW88399_I2STXEN_DISABLE_VALUE;
+-		}
+-
+-		if (reg_addr == AW88399_SYSCTRL2_REG) {
+-			read_vol = (reg_val & (~AW88399_VOL_MASK)) >>
+-				AW88399_VOL_START_BIT;
+-			aw_dev->volume_desc.init_volume = read_vol;
+-		}
+-
+-		if (reg_addr == AW88399_DBGCTRL_REG) {
+-			if ((reg_val & (~AW88399_EF_DBMD_MASK)) == AW88399_EF_DBMD_OR_VALUE)
+-				aw88399->check_val = AW_EF_OR_CHECK;
+-			else
+-				aw88399->check_val = AW_EF_AND_CHECK;
+-
+-			aw88399->dither_st = reg_val & (~AW88399_DITHER_EN_MASK);
+-		}
+-
+-		if (reg_addr == AW88399_CRCCTRL_REG)
+-			aw88399->crc_init_val = reg_val;
+-
+-		ret = regmap_write(aw_dev->regmap, reg_addr, reg_val);
+-		if (ret)
+-			return ret;
+-	}
+-
+-	aw_dev_pwd(aw_dev, false);
+-	usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
+-
+-	aw_dev_get_cur_mode_st(aw_dev);
+-
+-	if (aw_dev->prof_cur != aw_dev->prof_index)
+-		vol_desc->ctl_volume = 0;
+-	else
+-		aw_dev_set_volume(aw_dev, vol_desc->ctl_volume);
+-
+-	return 0;
+-}
+-
+-static int aw_dev_reg_update(struct aw88399 *aw88399,
+-					unsigned char *data, unsigned int len)
+-{
+-	int ret;
+-
+-	if (!len || !data) {
+-		dev_err(aw88399->aw_pa->dev, "reg data is null or len is 0");
+-		return -EINVAL;
+-	}
+-
+-	ret = aw_dev_update_reg_container(aw88399, data, len);
+-	if (ret)
+-		dev_err(aw88399->aw_pa->dev, "reg update failed");
+-
+-	return ret;
+-}
+-
+-static int aw88399_dev_get_prof_name(struct aw_device *aw_dev, int index, char **prof_name)
+-{
+-	struct aw_prof_info *prof_info = &aw_dev->prof_info;
+-	struct aw_prof_desc *prof_desc;
+-
+-	if ((index >= aw_dev->prof_info.count) || (index < 0)) {
+-		dev_err(aw_dev->dev, "index[%d] overflow count[%d]",
+-			index, aw_dev->prof_info.count);
+-		return -EINVAL;
+-	}
+-
+-	prof_desc = &aw_dev->prof_info.prof_desc[index];
+-
+-	*prof_name = prof_info->prof_name_list[prof_desc->id];
+-
+-	return 0;
+-}
+-
+-static int aw88399_dev_get_prof_data(struct aw_device *aw_dev, int index,
+-			struct aw_prof_desc **prof_desc)
+-{
+-	if ((index >= aw_dev->prof_info.count) || (index < 0)) {
+-		dev_err(aw_dev->dev, "%s: index[%d] overflow count[%d]\n",
+-				__func__, index, aw_dev->prof_info.count);
+-		return -EINVAL;
+-	}
+-
+-	*prof_desc = &aw_dev->prof_info.prof_desc[index];
+-
+-	return 0;
+-}
+-
+-static int aw88399_dev_fw_update(struct aw88399 *aw88399, bool up_dsp_fw_en, bool force_up_en)
+-{
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	struct aw_prof_desc *prof_index_desc;
+-	struct aw_sec_data_desc *sec_desc;
+-	char *prof_name;
+-	int ret;
+-
+-	if ((aw_dev->prof_cur == aw_dev->prof_index) &&
+-			(force_up_en == AW88399_FORCE_UPDATE_OFF)) {
+-		dev_dbg(aw_dev->dev, "scene no change, not update");
+-		return 0;
+-	}
+-
+-	if (aw_dev->fw_status == AW88399_DEV_FW_FAILED) {
+-		dev_err(aw_dev->dev, "fw status[%d] error", aw_dev->fw_status);
+-		return -EPERM;
+-	}
+-
+-	ret = aw88399_dev_get_prof_name(aw_dev, aw_dev->prof_index, &prof_name);
+-	if (ret)
+-		return ret;
+-
+-	dev_dbg(aw_dev->dev, "start update %s", prof_name);
+-
+-	ret = aw88399_dev_get_prof_data(aw_dev, aw_dev->prof_index, &prof_index_desc);
+-	if (ret)
+-		return ret;
+-
+-	/* update reg */
+-	sec_desc = prof_index_desc->sec_desc;
+-	ret = aw_dev_reg_update(aw88399, sec_desc[AW88395_DATA_TYPE_REG].data,
+-					sec_desc[AW88395_DATA_TYPE_REG].len);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "update reg failed");
+-		return ret;
+-	}
+-
+-	aw88399_dev_mute(aw_dev, true);
+-
+-	if (aw_dev->dsp_cfg == AW88399_DEV_DSP_WORK)
+-		aw_dev_dsp_enable(aw_dev, false);
+-
+-	aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_OSC);
+-
+-	ret = aw_dev_check_sram(aw_dev);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "check sram failed");
+-		goto error;
+-	}
+-
+-	if (up_dsp_fw_en) {
+-		dev_dbg(aw_dev->dev, "fw_ver: [%x]", prof_index_desc->fw_ver);
+-		ret = aw_dev_dsp_update_fw(aw_dev, sec_desc[AW88395_DATA_TYPE_DSP_FW].data,
+-					sec_desc[AW88395_DATA_TYPE_DSP_FW].len);
+-		if (ret) {
+-			dev_err(aw_dev->dev, "update dsp fw failed");
+-			goto error;
+-		}
+-	}
+-
+-	/* update dsp config */
+-	ret = aw_dev_dsp_update_cfg(aw_dev, sec_desc[AW88395_DATA_TYPE_DSP_CFG].data,
+-					sec_desc[AW88395_DATA_TYPE_DSP_CFG].len);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "update dsp cfg failed");
+-		goto error;
+-	}
+-
+-	aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_PLL);
+-
+-	aw_dev->prof_cur = aw_dev->prof_index;
+-
+-	return 0;
+-
+-error:
+-	aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_PLL);
+-	return ret;
+-}
+-
+-static void aw88399_start_pa(struct aw88399 *aw88399)
+-{
+-	int ret, i;
+-
+-	for (i = 0; i < AW88399_START_RETRIES; i++) {
+-		ret = aw88399_dev_start(aw88399);
+-		if (ret) {
+-			dev_err(aw88399->aw_pa->dev, "aw88399 device start failed. retry = %d", i);
+-			ret = aw88399_dev_fw_update(aw88399, AW88399_DSP_FW_UPDATE_ON, true);
+-			if (ret) {
+-				dev_err(aw88399->aw_pa->dev, "fw update failed");
+-				continue;
+-			}
+-		} else {
+-			dev_dbg(aw88399->aw_pa->dev, "start success\n");
+-			break;
+-		}
+-	}
+-}
+-
+-static void aw88399_startup_work(struct work_struct *work)
+-{
+-	struct aw88399 *aw88399 =
+-		container_of(work, struct aw88399, start_work.work);
+-
+-	mutex_lock(&aw88399->lock);
+-	aw88399_start_pa(aw88399);
+-	mutex_unlock(&aw88399->lock);
+-}
+-
+-static void aw88399_start(struct aw88399 *aw88399, bool sync_start)
+-{
+-	int ret;
+-
+-	if (aw88399->aw_pa->fw_status != AW88399_DEV_FW_OK)
+-		return;
+-
+-	if (aw88399->aw_pa->status == AW88399_DEV_PW_ON)
+-		return;
+-
+-	ret = aw88399_dev_fw_update(aw88399, AW88399_DSP_FW_UPDATE_OFF, true);
+-	if (ret) {
+-		dev_err(aw88399->aw_pa->dev, "fw update failed.");
+-		return;
+-	}
+-
+-	if (sync_start == AW88399_SYNC_START)
+-		aw88399_start_pa(aw88399);
+-	else
+-		queue_delayed_work(system_dfl_wq,
+-			&aw88399->start_work,
+-			AW88399_START_WORK_DELAY_MS);
+-}
+-
+-static int aw_dev_check_sysint(struct aw_device *aw_dev)
+-{
+-	u16 reg_val;
+-
+-	aw_dev_get_int_status(aw_dev, &reg_val);
+-	if (reg_val & AW88399_BIT_SYSINT_CHECK) {
+-		dev_err(aw_dev->dev, "pa stop check fail:0x%04x", reg_val);
+-		return -EINVAL;
+-	}
+-
+-	return 0;
+-}
+-
+-static int aw88399_stop(struct aw_device *aw_dev)
+-{
+-	struct aw_sec_data_desc *dsp_cfg =
+-		&aw_dev->prof_info.prof_desc[aw_dev->prof_cur].sec_desc[AW88395_DATA_TYPE_DSP_CFG];
+-	struct aw_sec_data_desc *dsp_fw =
+-		&aw_dev->prof_info.prof_desc[aw_dev->prof_cur].sec_desc[AW88395_DATA_TYPE_DSP_FW];
+-	int int_st;
+-
+-	if (aw_dev->status == AW88399_DEV_PW_OFF) {
+-		dev_dbg(aw_dev->dev, "already power off");
+-		return 0;
+-	}
+-
+-	aw_dev->status = AW88399_DEV_PW_OFF;
+-
+-	aw88399_dev_mute(aw_dev, true);
+-	usleep_range(AW88399_4000_US, AW88399_4000_US + 100);
+-
+-	aw_dev_i2s_tx_enable(aw_dev, false);
+-	usleep_range(AW88399_1000_US, AW88399_1000_US + 100);
+-
+-	int_st = aw_dev_check_sysint(aw_dev);
+-
+-	aw_dev_dsp_enable(aw_dev, false);
+-
+-	aw_dev_amppd(aw_dev, true);
+-
+-	if (int_st) {
+-		aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_OSC);
+-		aw_dev_dsp_update_fw(aw_dev, dsp_fw->data, dsp_fw->len);
+-		aw_dev_dsp_update_cfg(aw_dev, dsp_cfg->data, dsp_cfg->len);
+-		aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_PLL);
+-	}
+-
+-	aw_dev_pwd(aw_dev, true);
+-
+-	return 0;
+-}
+-
+ static struct snd_soc_dai_driver aw88399_dai[] = {
+ 	{
+ 		.name = "aw88399-aif",
+@@ -1869,86 +664,6 @@ static int aw88399_calib_set(struct snd_
+ 	return 0;
+ }
+ 
+-static int aw88399_dev_init(struct aw88399 *aw88399, struct aw_container *aw_cfg)
+-{
+-	struct aw_device *aw_dev = aw88399->aw_pa;
+-	int ret;
+-
+-	ret = aw88395_dev_cfg_load(aw_dev, aw_cfg);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "aw_dev acf parse failed");
+-		return -EINVAL;
+-	}
+-	aw_dev->fade_in_time = AW88399_1000_US / 10;
+-	aw_dev->fade_out_time = AW88399_1000_US >> 1;
+-	aw_dev->prof_cur = aw_dev->prof_info.prof_desc[0].id;
+-	aw_dev->prof_index = aw_dev->prof_info.prof_desc[0].id;
+-
+-	ret = aw88399_dev_fw_update(aw88399, AW88399_FORCE_UPDATE_ON, AW88399_DSP_FW_UPDATE_ON);
+-	if (ret) {
+-		dev_err(aw_dev->dev, "fw update failed ret = %d\n", ret);
+-		return ret;
+-	}
+-
+-	aw88399_dev_mute(aw_dev, true);
+-
+-	/* close tx feedback */
+-	aw_dev_i2s_tx_enable(aw_dev, false);
+-	usleep_range(AW88399_1000_US, AW88399_1000_US + 100);
+-
+-	/* enable amppd */
+-	aw_dev_amppd(aw_dev, true);
+-
+-	/* close dsp */
+-	aw_dev_dsp_enable(aw_dev, false);
+-	/* set power down */
+-	aw_dev_pwd(aw_dev, true);
+-
+-	return 0;
+-}
+-
+-static int aw88399_request_firmware_file(struct aw88399 *aw88399)
+-{
+-	const struct firmware *cont = NULL;
+-	int ret;
+-
+-	aw88399->aw_pa->fw_status = AW88399_DEV_FW_FAILED;
+-
+-	ret = request_firmware(&cont, AW88399_ACF_FILE, aw88399->aw_pa->dev);
+-	if (ret) {
+-		dev_err(aw88399->aw_pa->dev, "request [%s] failed!", AW88399_ACF_FILE);
+-		return ret;
+-	}
+-
+-	dev_dbg(aw88399->aw_pa->dev, "loaded %s - size: %zu\n",
+-			AW88399_ACF_FILE, cont ? cont->size : 0);
+-
+-	aw88399->aw_cfg = devm_kzalloc(aw88399->aw_pa->dev,
+-			struct_size(aw88399->aw_cfg, data, cont->size), GFP_KERNEL);
+-	if (!aw88399->aw_cfg) {
+-		release_firmware(cont);
+-		return -ENOMEM;
+-	}
+-	aw88399->aw_cfg->len = (int)cont->size;
+-	memcpy(aw88399->aw_cfg->data, cont->data, cont->size);
+-	release_firmware(cont);
+-
+-	ret = aw88395_dev_load_acf_check(aw88399->aw_pa, aw88399->aw_cfg);
+-	if (ret) {
+-		dev_err(aw88399->aw_pa->dev, "load [%s] failed!", AW88399_ACF_FILE);
+-		return ret;
+-	}
+-
+-	mutex_lock(&aw88399->lock);
+-	/* aw device init */
+-	ret = aw88399_dev_init(aw88399, aw88399->aw_cfg);
+-	if (ret)
+-		dev_err(aw88399->aw_pa->dev, "dev init failed");
+-	mutex_unlock(&aw88399->lock);
+-
+-	return ret;
+-}
+-
+ static const struct snd_kcontrol_new aw88399_controls[] = {
+ 	SOC_SINGLE_EXT("PCM Playback Volume", AW88399_SYSCTRL2_REG,
+ 		6, AW88399_MUTE_VOL, 0, aw88399_volume_get,
+@@ -2040,70 +755,6 @@ static const struct snd_soc_component_dr
+ 	.num_controls = ARRAY_SIZE(aw88399_controls),
+ };
+ 
+-static void aw88399_hw_reset(struct aw88399 *aw88399)
+-{
+-	if (aw88399->reset_gpio) {
+-		gpiod_set_value_cansleep(aw88399->reset_gpio, 1);
+-		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
+-		gpiod_set_value_cansleep(aw88399->reset_gpio, 0);
+-		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
+-		gpiod_set_value_cansleep(aw88399->reset_gpio, 1);
+-		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
+-	}
+-}
+-
+-static void aw88399_parse_channel_dt(struct aw_device *aw_dev)
+-{
+-	struct device_node *np = aw_dev->dev->of_node;
+-	u32 channel_value;
+-
+-	of_property_read_u32(np, "awinic,audio-channel", &channel_value);
+-	aw_dev->channel = channel_value;
+-}
+-
+-static int aw88399_init(struct aw88399 *aw88399, struct i2c_client *i2c, struct regmap *regmap)
+-{
+-	struct aw_device *aw_dev;
+-	unsigned int chip_id;
+-	int ret;
+-
+-	ret = regmap_read(regmap, AW88399_ID_REG, &chip_id);
+-	if (ret) {
+-		dev_err(&i2c->dev, "%s read chipid error. ret = %d", __func__, ret);
+-		return ret;
+-	}
+-	if (chip_id != AW88399_CHIP_ID) {
+-		dev_err(&i2c->dev, "unsupported device");
+-		return -ENXIO;
+-	}
+-	dev_dbg(&i2c->dev, "chip id = %x\n", chip_id);
+-
+-	aw_dev = devm_kzalloc(&i2c->dev, sizeof(*aw_dev), GFP_KERNEL);
+-	if (!aw_dev)
+-		return -ENOMEM;
+-	aw88399->aw_pa = aw_dev;
+-
+-	aw_dev->i2c = i2c;
+-	aw_dev->dev = &i2c->dev;
+-	aw_dev->regmap = regmap;
+-	mutex_init(&aw_dev->dsp_lock);
+-
+-	aw_dev->chip_id = chip_id;
+-	aw_dev->acf = NULL;
+-	aw_dev->prof_info.prof_desc = NULL;
+-	aw_dev->prof_info.count = 0;
+-	aw_dev->prof_info.prof_type = AW88395_DEV_NONE_TYPE_ID;
+-	aw_dev->channel = AW88399_DEV_DEFAULT_CH;
+-	aw_dev->fw_status = AW88399_DEV_FW_FAILED;
+-
+-	aw_dev->fade_step = AW88399_VOLUME_STEP_DB;
+-	aw_dev->volume_desc.ctl_volume = AW88399_VOL_DEFAULT_VALUE;
+-
+-	aw88399_parse_channel_dt(aw_dev);
+-
+-	return 0;
+-}
+-
+ static int aw88399_i2c_probe(struct i2c_client *i2c)
+ {
+ 	struct aw88399 *aw88399;
+diff -rupN linux-7.1.4/sound/soc/codecs/aw88399.h linux-7.1.4_patch_series/sound/soc/codecs/aw88399.h
+--- linux-7.1.4/sound/soc/codecs/aw88399.h	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/sound/soc/codecs/aw88399.h	2026-07-20 11:49:16.499734885 +0200
+@@ -10,512 +10,10 @@
+ #ifndef __AW88399_H__
+ #define __AW88399_H__
+ 
+-/* registers list */
+-#define AW88399_ID_REG			(0x00)
+-#define AW88399_SYSST_REG		(0x01)
+-#define AW88399_SYSINT_REG		(0x02)
+-#define AW88399_SYSINTM_REG		(0x03)
+-#define AW88399_SYSCTRL_REG		(0x04)
+-#define AW88399_SYSCTRL2_REG		(0x05)
+-#define AW88399_I2SCTRL1_REG		(0x06)
+-#define AW88399_I2SCTRL2_REG		(0x07)
+-#define AW88399_I2SCTRL3_REG		(0x08)
+-#define AW88399_DACCFG1_REG		(0x09)
+-#define AW88399_DACCFG2_REG		(0x0A)
+-#define AW88399_DACCFG3_REG		(0x0B)
+-#define AW88399_DACCFG4_REG		(0x0C)
+-#define AW88399_DACCFG5_REG		(0x0D)
+-#define AW88399_DACCFG6_REG		(0x0E)
+-#define AW88399_DACCFG7_REG		(0x0F)
+-#define AW88399_MPDCFG1_REG		(0x10)
+-#define AW88399_MPDCFG2_REG		(0x11)
+-#define AW88399_MPDCFG3_REG		(0x12)
+-#define AW88399_MPDCFG4_REG		(0x13)
+-#define AW88399_PWMCTRL1_REG		(0x14)
+-#define AW88399_PWMCTRL2_REG		(0x15)
+-#define AW88399_PWMCTRL3_REG		(0x16)
+-#define AW88399_I2SCFG1_REG		(0x17)
+-#define AW88399_DBGCTRL_REG		(0x18)
+-#define AW88399_HAGCST_REG		(0x20)
+-#define AW88399_VBAT_REG		(0x21)
+-#define AW88399_TEMP_REG		(0x22)
+-#define AW88399_PVDD_REG		(0x23)
+-#define AW88399_ISNDAT_REG		(0x24)
+-#define AW88399_VSNDAT_REG		(0x25)
+-#define AW88399_I2SINT_REG		(0x26)
+-#define AW88399_I2SCAPCNT_REG		(0x27)
+-#define AW88399_ANASTA1_REG		(0x28)
+-#define AW88399_ANASTA2_REG		(0x29)
+-#define AW88399_ANASTA3_REG		(0x2A)
+-#define AW88399_TESTDET_REG		(0x2B)
+-#define AW88399_DSMCFG1_REG		(0x30)
+-#define AW88399_DSMCFG2_REG		(0x31)
+-#define AW88399_DSMCFG3_REG		(0x32)
+-#define AW88399_DSMCFG4_REG		(0x33)
+-#define AW88399_DSMCFG5_REG		(0x34)
+-#define AW88399_DSMCFG6_REG		(0x35)
+-#define AW88399_DSMCFG7_REG		(0x36)
+-#define AW88399_DSMCFG8_REG		(0x37)
+-#define AW88399_TESTIN_REG		(0x38)
+-#define AW88399_TESTOUT_REG		(0x39)
+-#define AW88399_MEMTEST_REG		(0x3A)
+-#define AW88399_VSNCTRL1_REG		(0x3B)
+-#define AW88399_ISNCTRL1_REG		(0x3C)
+-#define AW88399_ISNCTRL2_REG		(0x3D)
+-#define AW88399_DSPMADD_REG		(0x40)
+-#define AW88399_DSPMDAT_REG		(0x41)
+-#define AW88399_WDT_REG		(0x42)
+-#define AW88399_ACR1_REG		(0x43)
+-#define AW88399_ACR2_REG		(0x44)
+-#define AW88399_ASR1_REG		(0x45)
+-#define AW88399_ASR2_REG		(0x46)
+-#define AW88399_DSPCFG_REG		(0x47)
+-#define AW88399_ASR3_REG		(0x48)
+-#define AW88399_ASR4_REG		(0x49)
+-#define AW88399_DSPVCALB_REG		(0x4A)
+-#define AW88399_CRCCTRL_REG		(0x4B)
+-#define AW88399_DSPDBG1_REG		(0x4C)
+-#define AW88399_DSPDBG2_REG		(0x4D)
+-#define AW88399_DSPDBG3_REG		(0x4E)
+-#define AW88399_PLLCTRL1_REG		(0x50)
+-#define AW88399_PLLCTRL2_REG		(0x51)
+-#define AW88399_PLLCTRL3_REG		(0x52)
+-#define AW88399_CDACTRL1_REG		(0x53)
+-#define AW88399_CDACTRL2_REG		(0x54)
+-#define AW88399_CDACTRL3_REG		(0x55)
+-#define AW88399_SADCCTRL1_REG		(0x56)
+-#define AW88399_SADCCTRL2_REG		(0x57)
+-#define AW88399_BOPCTRL1_REG		(0x58)
+-#define AW88399_BOPCTRL2_REG		(0x5A)
+-#define AW88399_BOPCTRL3_REG		(0x5B)
+-#define AW88399_BOPCTRL4_REG		(0x5C)
+-#define AW88399_BOPCTRL5_REG		(0x5D)
+-#define AW88399_BOPCTRL6_REG		(0x5E)
+-#define AW88399_BOPCTRL7_REG		(0x5F)
+-#define AW88399_BSTCTRL1_REG		(0x60)
+-#define AW88399_BSTCTRL2_REG		(0x61)
+-#define AW88399_BSTCTRL3_REG		(0x62)
+-#define AW88399_BSTCTRL4_REG		(0x63)
+-#define AW88399_BSTCTRL5_REG		(0x64)
+-#define AW88399_BSTCTRL6_REG		(0x65)
+-#define AW88399_BSTCTRL7_REG		(0x66)
+-#define AW88399_BSTCTRL8_REG		(0x67)
+-#define AW88399_BSTCTRL9_REG		(0x68)
+-#define AW88399_BSTCTRL10_REG		(0x69)
+-#define AW88399_CPCTRL_REG		(0x6A)
+-#define AW88399_EFWH_REG		(0x6C)
+-#define AW88399_EFWM2_REG		(0x6D)
+-#define AW88399_EFWM1_REG		(0x6E)
+-#define AW88399_EFWL_REG		(0x6F)
+-#define AW88399_TESTCTRL1_REG		(0x70)
+-#define AW88399_TESTCTRL2_REG		(0x71)
+-#define AW88399_EFCTRL1_REG		(0x72)
+-#define AW88399_EFCTRL2_REG		(0x73)
+-#define AW88399_EFRH4_REG		(0x74)
+-#define AW88399_EFRH3_REG		(0x75)
+-#define AW88399_EFRH2_REG		(0x76)
+-#define AW88399_EFRH1_REG		(0x77)
+-#define AW88399_EFRL4_REG		(0x78)
+-#define AW88399_EFRL3_REG		(0x79)
+-#define AW88399_EFRL2_REG		(0x7A)
+-#define AW88399_EFRL1_REG		(0x7B)
+-#define AW88399_TM_REG			(0x7C)
+-#define AW88399_TM2_REG		(0x7D)
+-
+-#define AW88399_REG_MAX		(0x7E)
+-#define AW88399_MUTE_VOL		(1023)
+-
+-#define AW88399_DSP_CFG_ADDR		(0x9B00)
+-#define AW88399_DSP_REG_CFG_ADPZ_RA	(0x9B68)
+-#define AW88399_DSP_FW_ADDR		(0x8980)
+-#define AW88399_DSP_ROM_CHECK_ADDR	(0x1F40)
+-#define AW88399_DSP_ROM_CHECK_DATA	(0x4638)
+-
+-#define AW88399_CALI_RE_HBITS_MASK	(~(0xFFFF0000))
+-#define AW88399_CALI_RE_HBITS_SHIFT	(16)
+-
+-#define AW88399_CALI_RE_LBITS_MASK	(~(0xFFFF))
+-#define AW88399_CALI_RE_LBITS_SHIFT	(0)
+-
+-#define AW88399_I2STXEN_START_BIT	(9)
+-#define AW88399_I2STXEN_BITS_LEN	(1)
+-#define AW88399_I2STXEN_MASK		\
+-	(~(((1<<AW88399_I2STXEN_BITS_LEN)-1) << AW88399_I2STXEN_START_BIT))
+-
+-#define AW88399_I2STXEN_DISABLE	(0)
+-#define AW88399_I2STXEN_DISABLE_VALUE	\
+-	(AW88399_I2STXEN_DISABLE << AW88399_I2STXEN_START_BIT)
+-
+-#define AW88399_I2STXEN_ENABLE		(1)
+-#define AW88399_I2STXEN_ENABLE_VALUE	\
+-	(AW88399_I2STXEN_ENABLE << AW88399_I2STXEN_START_BIT)
+-
+-#define AW88399_VOL_START_BIT		(0)
+-#define AW88399_VOL_BITS_LEN		(10)
+-#define AW88399_VOL_MASK		\
+-	(~(((1<<AW88399_VOL_BITS_LEN)-1) << AW88399_VOL_START_BIT))
+-
+-#define AW88399_PWDN_START_BIT		(0)
+-#define AW88399_PWDN_BITS_LEN		(1)
+-#define AW88399_PWDN_MASK		\
+-	(~(((1<<AW88399_PWDN_BITS_LEN)-1) << AW88399_PWDN_START_BIT))
+-
+-#define AW88399_PWDN_POWER_DOWN	(1)
+-#define AW88399_PWDN_POWER_DOWN_VALUE	\
+-	(AW88399_PWDN_POWER_DOWN << AW88399_PWDN_START_BIT)
+-
+-#define AW88399_PWDN_WORKING		(0)
+-#define AW88399_PWDN_WORKING_VALUE	\
+-	(AW88399_PWDN_WORKING << AW88399_PWDN_START_BIT)
+-
+-#define AW88399_DSPBY_START_BIT	(2)
+-#define AW88399_DSPBY_BITS_LEN		(1)
+-#define AW88399_DSPBY_MASK		\
+-	(~(((1<<AW88399_DSPBY_BITS_LEN)-1) << AW88399_DSPBY_START_BIT))
+-
+-#define AW88399_DSPBY_WORKING		(0)
+-#define AW88399_DSPBY_WORKING_VALUE	\
+-	(AW88399_DSPBY_WORKING << AW88399_DSPBY_START_BIT)
+-
+-#define AW88399_DSPBY_BYPASS		(1)
+-#define AW88399_DSPBY_BYPASS_VALUE	\
+-	(AW88399_DSPBY_BYPASS << AW88399_DSPBY_START_BIT)
+-
+-#define AW88399_MEM_CLKSEL_START_BIT	(3)
+-#define AW88399_MEM_CLKSEL_BITS_LEN	(1)
+-#define AW88399_MEM_CLKSEL_MASK		\
+-	(~(((1<<AW88399_MEM_CLKSEL_BITS_LEN)-1) << AW88399_MEM_CLKSEL_START_BIT))
+-
+-#define AW88399_MEM_CLKSEL_OSCCLK	(0)
+-#define AW88399_MEM_CLKSEL_OSCCLK_VALUE	\
+-	(AW88399_MEM_CLKSEL_OSCCLK << AW88399_MEM_CLKSEL_START_BIT)
+-
+-#define AW88399_MEM_CLKSEL_DAPHCLK	(1)
+-#define AW88399_MEM_CLKSEL_DAPHCLK_VALUE	\
+-	(AW88399_MEM_CLKSEL_DAPHCLK << AW88399_MEM_CLKSEL_START_BIT)
+-
+-#define AW88399_DITHER_EN_START_BIT	(15)
+-#define AW88399_DITHER_EN_BITS_LEN	(1)
+-#define AW88399_DITHER_EN_MASK		 \
+-	(~(((1<<AW88399_DITHER_EN_BITS_LEN)-1) << AW88399_DITHER_EN_START_BIT))
+-
+-#define AW88399_DITHER_EN_DISABLE	(0)
+-#define AW88399_DITHER_EN_DISABLE_VALUE	\
+-	(AW88399_DITHER_EN_DISABLE << AW88399_DITHER_EN_START_BIT)
+-
+-#define AW88399_DITHER_EN_ENABLE	(1)
+-#define AW88399_DITHER_EN_ENABLE_VALUE	\
+-	(AW88399_DITHER_EN_ENABLE << AW88399_DITHER_EN_START_BIT)
+-
+-#define AW88399_HMUTE_START_BIT	(8)
+-#define AW88399_HMUTE_BITS_LEN		(1)
+-#define AW88399_HMUTE_MASK		\
+-	(~(((1<<AW88399_HMUTE_BITS_LEN)-1) << AW88399_HMUTE_START_BIT))
+-
+-#define AW88399_HMUTE_DISABLE		(0)
+-#define AW88399_HMUTE_DISABLE_VALUE	\
+-	(AW88399_HMUTE_DISABLE << AW88399_HMUTE_START_BIT)
+-
+-#define AW88399_HMUTE_ENABLE		(1)
+-#define AW88399_HMUTE_ENABLE_VALUE	\
+-	(AW88399_HMUTE_ENABLE << AW88399_HMUTE_START_BIT)
+-
+-#define AW88399_EF_DBMD_START_BIT	(2)
+-#define AW88399_EF_DBMD_BITS_LEN	(1)
+-#define AW88399_EF_DBMD_MASK		\
+-	(~(((1<<AW88399_EF_DBMD_BITS_LEN)-1) << AW88399_EF_DBMD_START_BIT))
+-
+-#define AW88399_EF_DBMD_OR		(1)
+-#define AW88399_EF_DBMD_OR_VALUE	\
+-	(AW88399_EF_DBMD_OR << AW88399_EF_DBMD_START_BIT)
+-
+-#define AW88399_VDSEL_START_BIT	(5)
+-#define AW88399_VDSEL_BITS_LEN		(1)
+-#define AW88399_VDSEL_MASK		\
+-	(~(((1<<AW88399_VDSEL_BITS_LEN)-1) << AW88399_VDSEL_START_BIT))
+-
+-#define AW88399_EF_ISN_GESLP_H_START_BIT	(0)
+-#define AW88399_EF_ISN_GESLP_H_BITS_LEN	(10)
+-#define AW88399_EF_ISN_GESLP_H_MASK		\
+-	(~(((1<<AW88399_EF_ISN_GESLP_H_BITS_LEN)-1) << AW88399_EF_ISN_GESLP_H_START_BIT))
+-
+-/* EF_VSN_GESLP_H bit 9:0 (EFRH3 0x75) */
+-#define AW88399_EF_VSN_GESLP_H_START_BIT	(0)
+-#define AW88399_EF_VSN_GESLP_H_BITS_LEN	(10)
+-#define AW88399_EF_VSN_GESLP_H_MASK		\
+-	(~(((1<<AW88399_EF_VSN_GESLP_H_BITS_LEN)-1) << AW88399_EF_VSN_GESLP_H_START_BIT))
+-
+-#define AW88399_EF_ISN_GESLP_L_START_BIT	(0)
+-#define AW88399_EF_ISN_GESLP_L_BITS_LEN	(10)
+-#define AW88399_EF_ISN_GESLP_L_MASK		\
+-	(~(((1<<AW88399_EF_ISN_GESLP_L_BITS_LEN)-1) << AW88399_EF_ISN_GESLP_L_START_BIT))
+-
+-/* EF_VSN_GESLP_L bit 9:0 (EFRL3 0x79) */
+-#define AW88399_EF_VSN_GESLP_L_START_BIT	(0)
+-#define AW88399_EF_VSN_GESLP_L_BITS_LEN	(10)
+-#define AW88399_EF_VSN_GESLP_L_MASK		\
+-	(~(((1<<AW88399_EF_VSN_GESLP_L_BITS_LEN)-1) << AW88399_EF_VSN_GESLP_L_START_BIT))
+-
+-#define AW88399_INTERNAL_VSN_TRIM_H_START_BIT	(9)
+-#define AW88399_INTERNAL_VSN_TRIM_H_BITS_LEN	(6)
+-#define AW88399_INTERNAL_VSN_TRIM_H_MASK	\
+-	(~(((1<<AW88399_INTERNAL_VSN_TRIM_H_BITS_LEN)-1) << AW88399_INTERNAL_VSN_TRIM_H_START_BIT))
+-
+-#define AW88399_INTERNAL_VSN_TRIM_L_START_BIT	(9)
+-#define AW88399_INTERNAL_VSN_TRIM_L_BITS_LEN	(6)
+-#define AW88399_INTERNAL_VSN_TRIM_L_MASK	\
+-	(~(((1<<AW88399_INTERNAL_VSN_TRIM_L_BITS_LEN)-1) << AW88399_INTERNAL_VSN_TRIM_L_START_BIT))
+-
+-#define AW88399_RCV_MODE_START_BIT	(7)
+-#define AW88399_RCV_MODE_BITS_LEN	(1)
+-#define AW88399_RCV_MODE_MASK		\
+-	(~(((1<<AW88399_RCV_MODE_BITS_LEN)-1) << AW88399_RCV_MODE_START_BIT))
+-
+-#define AW88399_CLKI_START_BIT		(4)
+-#define AW88399_NOCLKI_START_BIT	(5)
+-#define AW88399_PLLI_START_BIT		(0)
+-#define AW88399_PLLI_INT_VALUE		(1)
+-#define AW88399_PLLI_INT_INTERRUPT \
+-	(AW88399_PLLI_INT_VALUE << AW88399_PLLI_START_BIT)
+-
+-#define AW88399_CLKI_INT_VALUE		(1)
+-#define AW88399_CLKI_INT_INTERRUPT \
+-	(AW88399_CLKI_INT_VALUE << AW88399_CLKI_START_BIT)
+-
+-#define AW88399_NOCLKI_INT_VALUE	(1)
+-#define AW88399_NOCLKI_INT_INTERRUPT \
+-	(AW88399_NOCLKI_INT_VALUE << AW88399_NOCLKI_START_BIT)
+-
+-#define AW88399_BIT_SYSINT_CHECK \
+-		(AW88399_PLLI_INT_INTERRUPT | \
+-		AW88399_CLKI_INT_INTERRUPT | \
+-		AW88399_NOCLKI_INT_INTERRUPT)
+-
+-#define AW88399_CRC_CHECK_START_BIT	(12)
+-#define AW88399_CRC_CHECK_BITS_LEN	(3)
+-#define AW88399_CRC_CHECK_BITS_MASK	\
+-	(~(((1<<AW88399_CRC_CHECK_BITS_LEN)-1) << AW88399_CRC_CHECK_START_BIT))
+-
+-#define AW88399_RCV_MODE_RECEIVER	(1)
+-#define AW88399_RCV_MODE_RECEIVER_VALUE	\
+-	(AW88399_RCV_MODE_RECEIVER << AW88399_RCV_MODE_START_BIT)
+-
+-#define AW88399_AMPPD_START_BIT	(1)
+-#define AW88399_AMPPD_BITS_LEN		(1)
+-#define AW88399_AMPPD_MASK		\
+-	(~(((1<<AW88399_AMPPD_BITS_LEN)-1) << AW88399_AMPPD_START_BIT))
+-
+-#define AW88399_AMPPD_WORKING		(0)
+-#define AW88399_AMPPD_WORKING_VALUE	\
+-	(AW88399_AMPPD_WORKING << AW88399_AMPPD_START_BIT)
+-
+-#define AW88399_AMPPD_POWER_DOWN	(1)
+-#define AW88399_AMPPD_POWER_DOWN_VALUE	\
+-	(AW88399_AMPPD_POWER_DOWN << AW88399_AMPPD_START_BIT)
+-
+-#define AW88399_RAM_CG_BYP_START_BIT	(0)
+-#define AW88399_RAM_CG_BYP_BITS_LEN	(1)
+-#define AW88399_RAM_CG_BYP_MASK		\
+-	(~(((1<<AW88399_RAM_CG_BYP_BITS_LEN)-1) << AW88399_RAM_CG_BYP_START_BIT))
+-
+-#define AW88399_RAM_CG_BYP_WORK	(0)
+-#define AW88399_RAM_CG_BYP_WORK_VALUE	\
+-	(AW88399_RAM_CG_BYP_WORK << AW88399_RAM_CG_BYP_START_BIT)
+-
+-#define AW88399_RAM_CG_BYP_BYPASS	(1)
+-#define AW88399_RAM_CG_BYP_BYPASS_VALUE	\
+-	(AW88399_RAM_CG_BYP_BYPASS << AW88399_RAM_CG_BYP_START_BIT)
+-
+-#define AW88399_CRC_END_ADDR_START_BIT	(0)
+-#define AW88399_CRC_END_ADDR_BITS_LEN	(12)
+-#define AW88399_CRC_END_ADDR_MASK	\
+-	(~(((1<<AW88399_CRC_END_ADDR_BITS_LEN)-1) << AW88399_CRC_END_ADDR_START_BIT))
+-
+-#define AW88399_CRC_CODE_EN_START_BIT	(13)
+-#define AW88399_CRC_CODE_EN_BITS_LEN	(1)
+-#define AW88399_CRC_CODE_EN_MASK	\
+-	(~(((1<<AW88399_CRC_CODE_EN_BITS_LEN)-1) << AW88399_CRC_CODE_EN_START_BIT))
+-
+-#define AW88399_CRC_CODE_EN_DISABLE	(0)
+-#define AW88399_CRC_CODE_EN_DISABLE_VALUE	\
+-	(AW88399_CRC_CODE_EN_DISABLE << AW88399_CRC_CODE_EN_START_BIT)
+-
+-#define AW88399_CRC_CODE_EN_ENABLE	(1)
+-#define AW88399_CRC_CODE_EN_ENABLE_VALUE	\
+-	(AW88399_CRC_CODE_EN_ENABLE << AW88399_CRC_CODE_EN_START_BIT)
+-
+-#define AW88399_CRC_CFG_EN_START_BIT	(12)
+-#define AW88399_CRC_CFG_EN_BITS_LEN	(1)
+-#define AW88399_CRC_CFG_EN_MASK		\
+-	(~(((1<<AW88399_CRC_CFG_EN_BITS_LEN)-1) << AW88399_CRC_CFG_EN_START_BIT))
+-
+-#define AW88399_CRC_CFG_EN_DISABLE	(0)
+-#define AW88399_CRC_CFG_EN_DISABLE_VALUE	\
+-	(AW88399_CRC_CFG_EN_DISABLE << AW88399_CRC_CFG_EN_START_BIT)
+-
+-#define AW88399_CRC_CFG_EN_ENABLE	(1)
+-#define AW88399_CRC_CFG_EN_ENABLE_VALUE	\
+-	(AW88399_CRC_CFG_EN_ENABLE << AW88399_CRC_CFG_EN_START_BIT)
+-
+-#define AW88399_OCDS_START_BIT		(3)
+-#define AW88399_OCDS_OC		(1)
+-#define AW88399_OCDS_OC_VALUE		\
+-	(AW88399_OCDS_OC << AW88399_OCDS_START_BIT)
+-
+-#define AW88399_NOCLKS_START_BIT	(5)
+-#define AW88399_NOCLKS_NO_CLOCK	(1)
+-#define AW88399_NOCLKS_NO_CLOCK_VALUE	\
+-	(AW88399_NOCLKS_NO_CLOCK << AW88399_NOCLKS_START_BIT)
+-
+-#define AW88399_SWS_START_BIT		(8)
+-#define AW88399_SWS_SWITCHING		(1)
+-#define AW88399_SWS_SWITCHING_VALUE	\
+-	(AW88399_SWS_SWITCHING << AW88399_SWS_START_BIT)
+-
+-#define AW88399_BSTS_START_BIT		(9)
+-#define AW88399_BSTS_FINISHED		(1)
+-#define AW88399_BSTS_FINISHED_VALUE	\
+-	(AW88399_BSTS_FINISHED << AW88399_BSTS_START_BIT)
+-
+-#define AW88399_UVLS_START_BIT		(14)
+-#define AW88399_UVLS_NORMAL		(0)
+-#define AW88399_UVLS_NORMAL_VALUE	\
+-	(AW88399_UVLS_NORMAL << AW88399_UVLS_START_BIT)
+-
+-#define AW88399_BSTOCS_START_BIT	(11)
+-#define AW88399_BSTOCS_OVER_CURRENT	(1)
+-#define AW88399_BSTOCS_OVER_CURRENT_VALUE	\
+-	(AW88399_BSTOCS_OVER_CURRENT << AW88399_BSTOCS_START_BIT)
+-
+-#define AW88399_OTHS_START_BIT		(1)
+-#define AW88399_OTHS_OT		(1)
+-#define AW88399_OTHS_OT_VALUE		\
+-	(AW88399_OTHS_OT << AW88399_OTHS_START_BIT)
+-
+-#define AW88399_PLLS_START_BIT		(0)
+-#define AW88399_PLLS_LOCKED		(1)
+-#define AW88399_PLLS_LOCKED_VALUE	\
+-	(AW88399_PLLS_LOCKED << AW88399_PLLS_START_BIT)
+-
+-#define AW88399_CLKS_START_BIT		(4)
+-#define AW88399_CLKS_STABLE		(1)
+-#define AW88399_CLKS_STABLE_VALUE	\
+-	(AW88399_CLKS_STABLE << AW88399_CLKS_START_BIT)
+-
+-#define AW88399_BIT_PLL_CHECK \
+-		(AW88399_CLKS_STABLE_VALUE | \
+-		AW88399_PLLS_LOCKED_VALUE)
+-
+-#define AW88399_BIT_SYSST_CHECK_MASK \
+-		(~(AW88399_UVLS_NORMAL_VALUE | \
+-		AW88399_BSTOCS_OVER_CURRENT_VALUE | \
+-		AW88399_BSTS_FINISHED_VALUE | \
+-		AW88399_SWS_SWITCHING_VALUE | \
+-		AW88399_NOCLKS_NO_CLOCK_VALUE | \
+-		AW88399_CLKS_STABLE_VALUE | \
+-		AW88399_OCDS_OC_VALUE | \
+-		AW88399_OTHS_OT_VALUE | \
+-		AW88399_PLLS_LOCKED_VALUE))
+-
+-#define AW88399_BIT_SYSST_NOSWS_CHECK \
+-		(AW88399_BSTS_FINISHED_VALUE | \
+-		AW88399_CLKS_STABLE_VALUE | \
+-		AW88399_PLLS_LOCKED_VALUE)
+-
+-#define AW88399_BIT_SYSST_SWS_CHECK \
+-		(AW88399_BSTS_FINISHED_VALUE | \
+-		AW88399_CLKS_STABLE_VALUE | \
+-		AW88399_PLLS_LOCKED_VALUE | \
+-		AW88399_SWS_SWITCHING_VALUE)
+-
+-#define AW88399_CCO_MUX_START_BIT	(14)
+-#define AW88399_CCO_MUX_BITS_LEN	(1)
+-#define AW88399_CCO_MUX_MASK		\
+-	(~(((1<<AW88399_CCO_MUX_BITS_LEN)-1) << AW88399_CCO_MUX_START_BIT))
+-
+-#define AW88399_CCO_MUX_DIVIDED	(0)
+-#define AW88399_CCO_MUX_DIVIDED_VALUE	\
+-	(AW88399_CCO_MUX_DIVIDED << AW88399_CCO_MUX_START_BIT)
+-
+-#define AW88399_CCO_MUX_BYPASS		(1)
+-#define AW88399_CCO_MUX_BYPASS_VALUE	\
+-	(AW88399_CCO_MUX_BYPASS << AW88399_CCO_MUX_START_BIT)
+-
+-#define AW88399_NOISE_GATE_EN_START_BIT	(13)
+-#define AW88399_NOISE_GATE_EN_BITS_LEN		(1)
+-#define AW88399_NOISE_GATE_EN_MASK	\
+-	(~(((1<<AW88399_NOISE_GATE_EN_BITS_LEN)-1) << AW88399_NOISE_GATE_EN_START_BIT))
+-
+-#define AW88399_WDT_CNT_START_BIT	(0)
+-#define AW88399_WDT_CNT_BITS_LEN	(8)
+-#define AW88399_WDT_CNT_MASK		\
+-	(~(((1<<AW88399_WDT_CNT_BITS_LEN)-1) << AW88399_WDT_CNT_START_BIT))
+-
+-#define AW88399_REABS_START_BIT	(3)
+-#define AW88399_REABS_BITS_LEN		(1)
+-#define AW88399_REABS_MASK		\
+-	(~(((1<<AW88399_REABS_BITS_LEN)-1) << AW88399_REABS_START_BIT))
+-
+-#define AW88399_DSP_VOL_START_BIT	(8)
+-#define AW88399_DSP_VOL_BITS_LEN	(8)
+-#define AW88399_DSP_VOL_MASK		\
+-	(~(((1<<AW88399_DSP_VOL_BITS_LEN)-1) << AW88399_DSP_VOL_START_BIT))
+-
+-#define AW883XX_DSP_NG_EN_START	(13)
+-#define AW883XX_DSP_NG_EN_LEN		(1)
+-#define AW883XX_DSP_NG_EN_MASK		\
+-	(~(((1 << AW883XX_DSP_NG_EN_LEN) - 1) << AW883XX_DSP_NG_EN_START))
+-#define AW883XX_DSP_NG_EN_DISABLE	(0)
+-#define AW883XX_DSP_NG_EN_DISABLE_VALUE	\
+-	(AW883XX_DSP_NG_EN_DISABLE << AW883XX_DSP_NG_EN_START)
+-
+-#define AW88399_VOLUME_STEP_DB			(64)
+-#define AW88399_VOL_DEFAULT_VALUE		(0)
+-#define AW88399_DSP_ODD_NUM_BIT_TEST		(0x5555)
+-#define AW88399_EF_ISN_GESLP_SIGN_MASK		(~(1 << 9))
+-#define AW88399_EF_ISN_GESLP_SIGN_NEG		(0xfe00)
+-
+-#define AW88399_EF_VSN_GESLP_SIGN_MASK		(~(1 << 9))
+-#define AW88399_EF_VSN_GESLP_SIGN_NEG		(0xfe00)
+-
+-#define AW88399_TEM4_SIGN_MASK			(~(1 << 5))
+-#define AW88399_TEM4_SIGN_NEG			(0xffc0)
+-
+-#define AW88399_ICABLK_FACTOR			(1)
+-#define AW88399_VCABLK_FACTOR			(1)
+-#define AW88399_VCABLK_DAC_FACTOR		(2)
+-
+-#define AW88399_VCALB_ADJ_FACTOR		(12)
+-#define AW88399_VCALB_ACCURACY			(1 << 12)
+-
+-#define AW88399_ISCAL_FACTOR			(3125)
+-#define AW88399_VSCAL_FACTOR			(18875)
+-#define AW88399_ISCAL_DAC_FACTOR		(3125)
+-#define AW88399_VSCAL_DAC_FACTOR		(12600)
+-#define AW88399_CABL_BASE_VALUE		(1000)
+-
+-#define AW88399_DEV_DEFAULT_CH			(0)
+-#define AW88399_DEV_DSP_CHECK_MAX		(5)
+-#define AW88399_MAX_RAM_WRITE_BYTE_SIZE	(128)
+-#define AW88399_DSP_RE_SHIFT			(12)
+-#define AW88399_CALI_RE_MAX			(15000)
+-#define AW88399_CALI_RE_MIN			(4000)
+-#define AW_FW_ADDR_LEN				(4)
+-#define AW88399_DSP_RE_TO_SHOW_RE(re, shift)	(((re) * (1000)) >> (shift))
+-#define AW88399_SHOW_RE_TO_DSP_RE(re, shift)	(((re) << shift) / (1000))
+-#define AW88399_CRC_CHECK_PASS_VAL		(0x4)
+-
+-#define AW88399_CRC_CFG_BASE_ADDR		(0xD80)
+-#define AW88399_CRC_FW_BASE_ADDR		(0x4C0)
+-#define AW88399_ACF_FILE			"aw88399_acf.bin"
+-#define AW88399_DEV_SYSST_CHECK_MAX		(10)
+-#define AW88399_CHIP_ID			0x2183
++#include <sound/aw88399.h>
+ 
+ #define AW88399_I2C_NAME			"aw88399"
+ 
+-#define AW88399_START_RETRIES			(5)
+-#define AW88399_START_WORK_DELAY_MS		(0)
+-
+ #define AW88399_RATES (SNDRV_PCM_RATE_8000_48000 | \
+ 			SNDRV_PCM_RATE_96000)
+ #define AW88399_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
+@@ -550,80 +48,4 @@
+ 	.put = profile_set, \
+ }
+ 
+-enum {
+-	AW_EF_AND_CHECK = 0,
+-	AW_EF_OR_CHECK,
+-};
+-
+-enum {
+-	AW88399_DEV_VDSEL_DAC = 0,
+-	AW88399_DEV_VDSEL_VSENSE = 32,
+-};
+-
+-enum {
+-	AW88399_DSP_CRC_NA = 0,
+-	AW88399_DSP_CRC_OK = 1,
+-};
+-
+-enum {
+-	AW88399_DSP_FW_UPDATE_OFF = 0,
+-	AW88399_DSP_FW_UPDATE_ON = 1,
+-};
+-
+-enum {
+-	AW88399_FORCE_UPDATE_OFF = 0,
+-	AW88399_FORCE_UPDATE_ON = 1,
+-};
+-
+-enum {
+-	AW88399_1000_US = 1000,
+-	AW88399_2000_US = 2000,
+-	AW88399_3000_US = 3000,
+-	AW88399_4000_US = 4000,
+-};
+-
+-enum AW88399_DEV_STATUS {
+-	AW88399_DEV_PW_OFF = 0,
+-	AW88399_DEV_PW_ON,
+-};
+-
+-enum AW88399_DEV_FW_STATUS {
+-	AW88399_DEV_FW_FAILED = 0,
+-	AW88399_DEV_FW_OK,
+-};
+-
+-enum AW88399_DEV_MEMCLK {
+-	AW88399_DEV_MEMCLK_OSC = 0,
+-	AW88399_DEV_MEMCLK_PLL = 1,
+-};
+-
+-enum AW88399_DEV_DSP_CFG {
+-	AW88399_DEV_DSP_WORK = 0,
+-	AW88399_DEV_DSP_BYPASS = 1,
+-};
+-
+-enum {
+-	AW88399_NOT_RCV_MODE = 0,
+-	AW88399_RCV_MODE = 1,
+-};
+-
+-enum {
+-	AW88399_SYNC_START = 0,
+-	AW88399_ASYNC_START,
+-};
+-
+-struct aw88399 {
+-	struct aw_device *aw_pa;
+-	struct mutex lock;
+-	struct gpio_desc *reset_gpio;
+-	struct delayed_work start_work;
+-	struct regmap *regmap;
+-	struct aw_container *aw_cfg;
+-
+-	unsigned int check_val;
+-	unsigned int crc_init_val;
+-	unsigned int vcalb_init_val;
+-	unsigned int dither_st;
+-};
+-
+-#endif
++#endif /* __AW88399_H__ */
+diff -rupN linux-7.1.4/sound/soc/codecs/aw88399-lib.c linux-7.1.4_patch_series/sound/soc/codecs/aw88399-lib.c
+--- linux-7.1.4/sound/soc/codecs/aw88399-lib.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.4_patch_series/sound/soc/codecs/aw88399-lib.c	2026-07-20 11:49:16.499904935 +0200
+@@ -0,0 +1,1411 @@
++// SPDX-License-Identifier: GPL-2.0-only
++//
++// aw88399-lib.c --  AW88399 Common functions for ASoC and HDA audio drivers
++//
++// Copyright (c) 2023 AWINIC Technology CO., LTD
++//
++// Author: Weidong Wang <wangweidong.a@awinic.com>
++//
++
++#include <linux/firmware.h>
++#include <linux/gpio/consumer.h>
++#include <linux/i2c.h>
++#include <linux/minmax.h>
++#include <linux/regmap.h>
++#include <sound/soc.h>
++#include <sound/aw88399.h>
++#include "aw88395/aw88395_device.h"
++
++const struct regmap_config aw88399_remap_config = {
++	.val_bits = 16,
++	.reg_bits = 8,
++	.max_register = AW88399_REG_MAX,
++	.reg_format_endian = REGMAP_ENDIAN_LITTLE,
++	.val_format_endian = REGMAP_ENDIAN_BIG,
++};
++EXPORT_SYMBOL_GPL(aw88399_remap_config);
++
++static void aw_dev_pwd(struct aw_device *aw_dev, bool pwd)
++{
++	int ret;
++
++	if (pwd)
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++				~AW88399_PWDN_MASK, AW88399_PWDN_POWER_DOWN_VALUE);
++	else
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++				~AW88399_PWDN_MASK, AW88399_PWDN_WORKING_VALUE);
++
++	if (ret)
++		dev_dbg(aw_dev->dev, "%s failed", __func__);
++}
++
++static void aw_dev_get_int_status(struct aw_device *aw_dev, unsigned short *int_status)
++{
++	unsigned int reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_SYSINT_REG, &reg_val);
++	if (ret)
++		dev_err(aw_dev->dev, "read interrupt reg fail, ret=%d", ret);
++	else
++		*int_status = reg_val;
++
++	dev_dbg(aw_dev->dev, "read interrupt reg=0x%04x", *int_status);
++}
++
++static void aw_dev_clear_int_status(struct aw_device *aw_dev)
++{
++	u16 int_status;
++
++	/* read int status and clear */
++	aw_dev_get_int_status(aw_dev, &int_status);
++	/* make sure int status is clear */
++	aw_dev_get_int_status(aw_dev, &int_status);
++	if (int_status)
++		dev_dbg(aw_dev->dev, "int status(%d) is not cleaned.\n", int_status);
++}
++
++static int aw_dev_get_iis_status(struct aw_device *aw_dev)
++{
++	unsigned int reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_SYSST_REG, &reg_val);
++	if (ret)
++		return ret;
++	if ((reg_val & AW88399_BIT_PLL_CHECK) != AW88399_BIT_PLL_CHECK) {
++		dev_err(aw_dev->dev, "check pll lock fail, reg_val:0x%04x", reg_val);
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int aw_dev_check_mode1_pll(struct aw_device *aw_dev)
++{
++	int ret, i;
++
++	for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
++		ret = aw_dev_get_iis_status(aw_dev);
++		if (ret) {
++			dev_err(aw_dev->dev, "mode1 iis signal check error");
++			usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++		} else {
++			return 0;
++		}
++	}
++
++	return -EPERM;
++}
++
++static int aw_dev_check_mode2_pll(struct aw_device *aw_dev)
++{
++	unsigned int reg_val;
++	int ret, i;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_PLLCTRL2_REG, &reg_val);
++	if (ret)
++		return ret;
++
++	reg_val &= (~AW88399_CCO_MUX_MASK);
++	if (reg_val == AW88399_CCO_MUX_DIVIDED_VALUE) {
++		dev_dbg(aw_dev->dev, "CCO_MUX is already divider");
++		return -EPERM;
++	}
++
++	/* change mode2 */
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_PLLCTRL2_REG,
++			~AW88399_CCO_MUX_MASK, AW88399_CCO_MUX_DIVIDED_VALUE);
++	if (ret)
++		return ret;
++
++	for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
++		ret = aw_dev_get_iis_status(aw_dev);
++		if (ret) {
++			dev_err(aw_dev->dev, "mode2 iis signal check error");
++			usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++		} else {
++			break;
++		}
++	}
++
++	/* change mode1 */
++	regmap_update_bits(aw_dev->regmap, AW88399_PLLCTRL2_REG,
++			~AW88399_CCO_MUX_MASK, AW88399_CCO_MUX_BYPASS_VALUE);
++	if (ret == 0) {
++		usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++		for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
++			ret = aw_dev_get_iis_status(aw_dev);
++			if (ret) {
++				dev_err(aw_dev->dev, "mode2 switch to mode1, iis signal check error");
++				usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++			} else {
++				break;
++			}
++		}
++	}
++
++	return ret;
++}
++
++int aw_dev_check_syspll(struct aw_device *aw_dev)
++{
++	int ret;
++
++	ret = aw_dev_check_mode1_pll(aw_dev);
++	if (ret) {
++		dev_dbg(aw_dev->dev, "mode1 check iis failed try switch to mode2 check");
++		ret = aw_dev_check_mode2_pll(aw_dev);
++		if (ret) {
++			dev_err(aw_dev->dev, "mode2 check iis failed");
++			return ret;
++		}
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(aw_dev_check_syspll);
++
++static int aw_dev_check_sysst(struct aw88399 *aw88399)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	unsigned int check_val;
++	unsigned int reg_val;
++	int ret, i;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_PWMCTRL3_REG, &reg_val);
++	if (ret)
++		return ret;
++
++	if (reg_val & (~AW88399_NOISE_GATE_EN_MASK))
++		check_val = AW88399_BIT_SYSST_NOSWS_CHECK;
++	else
++		check_val = AW88399_BIT_SYSST_SWS_CHECK;
++
++	/*
++	 * On some hardware the BSTS (boost-finished) status bit does not
++	 * reliably assert even when audio output is working normally.
++	 * Allow per-instance bypass when flagged by the side-codec driver.
++	 */
++	if (aw88399->bsts_unreliable)
++		check_val &= ~AW88399_BSTS_FINISHED_VALUE;
++
++	for (i = 0; i < AW88399_DEV_SYSST_CHECK_MAX; i++) {
++		ret = regmap_read(aw_dev->regmap, AW88399_SYSST_REG, &reg_val);
++		if (ret)
++			return ret;
++
++		if ((reg_val & (~AW88399_BIT_SYSST_CHECK_MASK) & check_val) != check_val) {
++			dev_err(aw_dev->dev, "check sysst fail, cnt=%d, reg_val=0x%04x, check:0x%x",
++				i, reg_val, AW88399_BIT_SYSST_NOSWS_CHECK);
++			usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++		} else {
++			return 0;
++		}
++	}
++
++	return -EPERM;
++}
++
++static void aw_dev_amppd(struct aw_device *aw_dev, bool amppd)
++{
++	int ret;
++
++	if (amppd)
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++				~AW88399_AMPPD_MASK, AW88399_AMPPD_POWER_DOWN_VALUE);
++	else
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++				~AW88399_AMPPD_MASK, AW88399_AMPPD_WORKING_VALUE);
++
++	if (ret)
++		dev_dbg(aw_dev->dev, "%s failed", __func__);
++}
++
++void aw_dev_dsp_enable(struct aw_device *aw_dev, bool is_enable)
++{
++	int ret;
++
++	if (is_enable)
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++					~AW88399_DSPBY_MASK, AW88399_DSPBY_WORKING_VALUE);
++	else
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++					~AW88399_DSPBY_MASK, AW88399_DSPBY_BYPASS_VALUE);
++
++	if (ret)
++		dev_dbg(aw_dev->dev, "%s failed\n", __func__);
++}
++EXPORT_SYMBOL_GPL(aw_dev_dsp_enable);
++
++static int aw88399_dev_get_icalk(struct aw88399 *aw88399, int16_t *icalk)
++{
++	uint16_t icalkh_val, icalkl_val, icalk_val;
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	unsigned int reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_EFRH4_REG, &reg_val);
++	if (ret)
++		return ret;
++	icalkh_val = reg_val & (~AW88399_EF_ISN_GESLP_H_MASK);
++
++	ret = regmap_read(aw_dev->regmap, AW88399_EFRL4_REG, &reg_val);
++	if (ret)
++		return ret;
++	icalkl_val = reg_val & (~AW88399_EF_ISN_GESLP_L_MASK);
++
++	if (aw88399->check_val == AW_EF_AND_CHECK)
++		icalk_val = icalkh_val & icalkl_val;
++	else
++		icalk_val = icalkh_val | icalkl_val;
++
++	if (icalk_val & (~AW88399_EF_ISN_GESLP_SIGN_MASK))
++		icalk_val = icalk_val | AW88399_EF_ISN_GESLP_SIGN_NEG;
++	*icalk = (int16_t)icalk_val;
++
++	return 0;
++}
++
++static int aw88399_dev_get_vcalk(struct aw88399 *aw88399, int16_t *vcalk)
++{
++	uint16_t vcalkh_val, vcalkl_val, vcalk_val;
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	unsigned int reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_EFRH3_REG, &reg_val);
++	if (ret)
++		return ret;
++
++	vcalkh_val = reg_val & (~AW88399_EF_VSN_GESLP_H_MASK);
++
++	ret = regmap_read(aw_dev->regmap, AW88399_EFRL3_REG, &reg_val);
++	if (ret)
++		return ret;
++
++	vcalkl_val = reg_val & (~AW88399_EF_VSN_GESLP_L_MASK);
++
++	if (aw88399->check_val == AW_EF_AND_CHECK)
++		vcalk_val = vcalkh_val & vcalkl_val;
++	else
++		vcalk_val = vcalkh_val | vcalkl_val;
++
++	if (vcalk_val & AW88399_EF_VSN_GESLP_SIGN_MASK)
++		vcalk_val = vcalk_val | AW88399_EF_VSN_GESLP_SIGN_NEG;
++	*vcalk = (int16_t)vcalk_val;
++
++	return 0;
++}
++
++static int aw88399_dev_get_internal_vcalk(struct aw88399 *aw88399, int16_t *vcalk)
++{
++	uint16_t vcalkh_val, vcalkl_val, vcalk_val;
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	unsigned int reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_EFRH2_REG, &reg_val);
++	if (ret)
++		return ret;
++	vcalkh_val = reg_val & (~AW88399_INTERNAL_VSN_TRIM_H_MASK);
++
++	ret = regmap_read(aw_dev->regmap, AW88399_EFRL2_REG, &reg_val);
++	if (ret)
++		return ret;
++	vcalkl_val = reg_val & (~AW88399_INTERNAL_VSN_TRIM_L_MASK);
++
++	if (aw88399->check_val == AW_EF_AND_CHECK)
++		vcalk_val = (vcalkh_val >> AW88399_INTERNAL_VSN_TRIM_H_START_BIT) &
++				(vcalkl_val >> AW88399_INTERNAL_VSN_TRIM_L_START_BIT);
++	else
++		vcalk_val = (vcalkh_val >> AW88399_INTERNAL_VSN_TRIM_H_START_BIT) |
++				(vcalkl_val >> AW88399_INTERNAL_VSN_TRIM_L_START_BIT);
++
++	if (vcalk_val & (~AW88399_TEM4_SIGN_MASK))
++		vcalk_val = vcalk_val | AW88399_TEM4_SIGN_NEG;
++
++	*vcalk = (int16_t)vcalk_val;
++
++	return 0;
++}
++
++static int aw_dev_set_vcalb(struct aw88399 *aw88399)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	unsigned int vsense_select, vsense_value;
++	int32_t ical_k, vcal_k, vcalb;
++	int16_t icalk, vcalk;
++	uint16_t reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_VSNCTRL1_REG, &vsense_value);
++	if (ret)
++		return ret;
++
++	vsense_select = vsense_value & (~AW88399_VDSEL_MASK);
++
++	ret = aw88399_dev_get_icalk(aw88399, &icalk);
++	if (ret) {
++		dev_err(aw_dev->dev, "get icalk failed\n");
++		return ret;
++	}
++
++	ical_k = icalk * AW88399_ICABLK_FACTOR + AW88399_CABL_BASE_VALUE;
++
++	switch (vsense_select) {
++	case AW88399_DEV_VDSEL_VSENSE:
++		ret = aw88399_dev_get_vcalk(aw88399, &vcalk);
++		vcal_k = vcalk * AW88399_VCABLK_FACTOR + AW88399_CABL_BASE_VALUE;
++		vcalb = AW88399_VCALB_ACCURACY * AW88399_VSCAL_FACTOR / AW88399_ISCAL_FACTOR *
++			ical_k / vcal_k * aw88399->vcalb_init_val;
++		break;
++	case AW88399_DEV_VDSEL_DAC:
++		ret = aw88399_dev_get_internal_vcalk(aw88399, &vcalk);
++		vcal_k = vcalk * AW88399_VCABLK_DAC_FACTOR + AW88399_CABL_BASE_VALUE;
++		vcalb = AW88399_VCALB_ACCURACY * AW88399_VSCAL_DAC_FACTOR /
++					AW88399_ISCAL_DAC_FACTOR * ical_k /
++					vcal_k * aw88399->vcalb_init_val;
++		break;
++	default:
++		dev_err(aw_dev->dev, "%s: unsupported vsense\n", __func__);
++		ret = -EINVAL;
++		break;
++	}
++	if (ret)
++		return ret;
++
++	vcalb = vcalb >> AW88399_VCALB_ADJ_FACTOR;
++	reg_val = (uint32_t)vcalb;
++
++	regmap_write(aw_dev->regmap, AW88399_DSPVCALB_REG, reg_val);
++
++	return 0;
++}
++
++int aw_dev_update_cali_re(struct aw_cali_desc *cali_desc)
++{
++	struct aw_device *aw_dev =
++		container_of(cali_desc, struct aw_device, cali_desc);
++	uint16_t re_lbits, re_hbits;
++	u32 cali_re;
++	int ret;
++
++	if ((aw_dev->cali_desc.cali_re >= AW88399_CALI_RE_MAX) ||
++			(aw_dev->cali_desc.cali_re <= AW88399_CALI_RE_MIN))
++		return -EINVAL;
++
++	cali_re = AW88399_SHOW_RE_TO_DSP_RE((aw_dev->cali_desc.cali_re +
++				aw_dev->cali_desc.ra), AW88399_DSP_RE_SHIFT);
++
++	re_hbits = (cali_re & (~AW88399_CALI_RE_HBITS_MASK)) >> AW88399_CALI_RE_HBITS_SHIFT;
++	re_lbits = (cali_re & (~AW88399_CALI_RE_LBITS_MASK)) >> AW88399_CALI_RE_LBITS_SHIFT;
++
++	ret = regmap_write(aw_dev->regmap, AW88399_ACR1_REG, re_hbits);
++	if (ret) {
++		dev_err(aw_dev->dev, "set cali re error");
++		return ret;
++	}
++
++	ret = regmap_write(aw_dev->regmap, AW88399_ACR2_REG, re_lbits);
++	if (ret)
++		dev_err(aw_dev->dev, "set cali re error");
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(aw_dev_update_cali_re);
++
++static int aw_dev_fw_crc_check(struct aw_device *aw_dev)
++{
++	uint16_t check_val, fw_len_val;
++	unsigned int reg_val;
++	int ret;
++
++	/* calculate fw_end_addr */
++	fw_len_val = ((aw_dev->dsp_fw_len / AW_FW_ADDR_LEN) - 1) + AW88399_CRC_FW_BASE_ADDR;
++
++	/* write fw_end_addr to crc_end_addr */
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
++					~AW88399_CRC_END_ADDR_MASK, fw_len_val);
++	if (ret)
++		return ret;
++	/* enable fw crc check */
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
++		~AW88399_CRC_CODE_EN_MASK, AW88399_CRC_CODE_EN_ENABLE_VALUE);
++
++	usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++
++	/* read crc check result */
++	regmap_read(aw_dev->regmap, AW88399_HAGCST_REG, &reg_val);
++	if (ret)
++		return ret;
++
++	check_val = (reg_val & (~AW88399_CRC_CHECK_BITS_MASK)) >> AW88399_CRC_CHECK_START_BIT;
++
++	/* disable fw crc check */
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
++		~AW88399_CRC_CODE_EN_MASK, AW88399_CRC_CODE_EN_DISABLE_VALUE);
++	if (ret)
++		return ret;
++
++	if (check_val != AW88399_CRC_CHECK_PASS_VAL) {
++		dev_err(aw_dev->dev, "%s failed, check_val 0x%x != 0x%x",
++				__func__, check_val, AW88399_CRC_CHECK_PASS_VAL);
++		ret = -EINVAL;
++	}
++
++	return ret;
++}
++
++static int aw_dev_cfg_crc_check(struct aw_device *aw_dev)
++{
++	uint16_t check_val, cfg_len_val;
++	unsigned int reg_val;
++	int ret;
++
++	/* calculate cfg end addr */
++	cfg_len_val = ((aw_dev->dsp_cfg_len / AW_FW_ADDR_LEN) - 1) + AW88399_CRC_CFG_BASE_ADDR;
++
++	/* write cfg_end_addr to crc_end_addr */
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
++				~AW88399_CRC_END_ADDR_MASK, cfg_len_val);
++	if (ret)
++		return ret;
++
++	/* enable cfg crc check */
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
++			~AW88399_CRC_CFG_EN_MASK, AW88399_CRC_CFG_EN_ENABLE_VALUE);
++	if (ret)
++		return ret;
++
++	usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
++
++	/* read crc check result */
++	ret = regmap_read(aw_dev->regmap, AW88399_HAGCST_REG, &reg_val);
++	if (ret)
++		return ret;
++
++	check_val = (reg_val & (~AW88399_CRC_CHECK_BITS_MASK)) >> AW88399_CRC_CHECK_START_BIT;
++
++	/* disable cfg crc check */
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_CRCCTRL_REG,
++			~AW88399_CRC_CFG_EN_MASK, AW88399_CRC_CFG_EN_DISABLE_VALUE);
++	if (ret)
++		return ret;
++
++	if (check_val != AW88399_CRC_CHECK_PASS_VAL) {
++		dev_err(aw_dev->dev, "crc_check failed, check val 0x%x != 0x%x",
++						check_val, AW88399_CRC_CHECK_PASS_VAL);
++		ret = -EINVAL;
++	}
++
++	return ret;
++}
++
++static int aw_dev_hw_crc_check(struct aw88399 *aw88399)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	int ret;
++
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
++		~AW88399_RAM_CG_BYP_MASK, AW88399_RAM_CG_BYP_BYPASS_VALUE);
++	if (ret)
++		return ret;
++
++	ret = aw_dev_fw_crc_check(aw_dev);
++	if (ret) {
++		dev_err(aw_dev->dev, "fw_crc_check failed\n");
++		goto crc_check_failed;
++	}
++
++	ret = aw_dev_cfg_crc_check(aw_dev);
++	if (ret) {
++		dev_err(aw_dev->dev, "cfg_crc_check failed\n");
++		goto crc_check_failed;
++	}
++
++	ret = regmap_write(aw_dev->regmap, AW88399_CRCCTRL_REG, aw88399->crc_init_val);
++	if (ret)
++		return ret;
++
++	ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
++		~AW88399_RAM_CG_BYP_MASK, AW88399_RAM_CG_BYP_WORK_VALUE);
++
++	return ret;
++
++crc_check_failed:
++	regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
++		~AW88399_RAM_CG_BYP_MASK, AW88399_RAM_CG_BYP_WORK_VALUE);
++	return ret;
++}
++
++static void aw_dev_i2s_tx_enable(struct aw_device *aw_dev, bool flag)
++{
++	int ret;
++
++	if (flag)
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCTRL3_REG,
++			~AW88399_I2STXEN_MASK, AW88399_I2STXEN_ENABLE_VALUE);
++	else
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_I2SCFG1_REG,
++			~AW88399_I2STXEN_MASK, AW88399_I2STXEN_DISABLE_VALUE);
++
++	if (ret)
++		dev_dbg(aw_dev->dev, "%s failed", __func__);
++}
++
++int aw_dev_get_dsp_status(struct aw_device *aw_dev)
++{
++	unsigned int reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_WDT_REG, &reg_val);
++	if (ret)
++		return ret;
++	if (!(reg_val & (~AW88399_WDT_CNT_MASK)))
++		return -EPERM;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(aw_dev_get_dsp_status);
++
++static int aw_dev_dsp_check(struct aw_device *aw_dev)
++{
++	int ret, i;
++
++	switch (aw_dev->dsp_cfg) {
++	case AW88399_DEV_DSP_BYPASS:
++		dev_dbg(aw_dev->dev, "dsp bypass");
++		ret = 0;
++		break;
++	case AW88399_DEV_DSP_WORK:
++		aw_dev_dsp_enable(aw_dev, false);
++		aw_dev_dsp_enable(aw_dev, true);
++		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
++		for (i = 0; i < AW88399_DEV_DSP_CHECK_MAX; i++) {
++			ret = aw_dev_get_dsp_status(aw_dev);
++			if (ret) {
++				dev_err(aw_dev->dev, "dsp wdt status error=%d", ret);
++				usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++			}
++		}
++		break;
++	default:
++		dev_err(aw_dev->dev, "unknown dsp cfg=%d", aw_dev->dsp_cfg);
++		ret = -EINVAL;
++		break;
++	}
++
++	return ret;
++}
++
++int aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value)
++{
++	struct aw_volume_desc *vol_desc = &aw_dev->volume_desc;
++	unsigned int reg_value;
++	u16 real_value;
++	int ret;
++
++	real_value = min((value + vol_desc->init_volume), (unsigned int)AW88399_MUTE_VOL);
++
++	ret = regmap_read(aw_dev->regmap, AW88399_SYSCTRL2_REG, &reg_value);
++	if (ret)
++		return ret;
++
++	dev_dbg(aw_dev->dev, "value 0x%x , reg:0x%x", value, real_value);
++
++	real_value = (real_value << AW88399_VOL_START_BIT) | (reg_value & AW88399_VOL_MASK);
++
++	ret = regmap_write(aw_dev->regmap, AW88399_SYSCTRL2_REG, real_value);
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(aw_dev_set_volume);
++
++static void aw_dev_fade_in(struct aw_device *aw_dev)
++{
++	struct aw_volume_desc *desc = &aw_dev->volume_desc;
++	u16 fade_in_vol = desc->ctl_volume;
++	int fade_step = aw_dev->fade_step;
++	int i;
++
++	if (fade_step == 0 || aw_dev->fade_in_time == 0) {
++		aw_dev_set_volume(aw_dev, fade_in_vol);
++		return;
++	}
++
++	for (i = AW88399_MUTE_VOL; i >= fade_in_vol; i -= fade_step) {
++		aw_dev_set_volume(aw_dev, i);
++		usleep_range(aw_dev->fade_in_time, aw_dev->fade_in_time + 10);
++	}
++
++	if (i != fade_in_vol)
++		aw_dev_set_volume(aw_dev, fade_in_vol);
++}
++
++static void aw_dev_fade_out(struct aw_device *aw_dev)
++{
++	struct aw_volume_desc *desc = &aw_dev->volume_desc;
++	int fade_step = aw_dev->fade_step;
++	int i;
++
++	if (fade_step == 0 || aw_dev->fade_out_time == 0) {
++		aw_dev_set_volume(aw_dev, AW88399_MUTE_VOL);
++		return;
++	}
++
++	for (i = desc->ctl_volume; i <= AW88399_MUTE_VOL; i += fade_step) {
++		aw_dev_set_volume(aw_dev, i);
++		usleep_range(aw_dev->fade_out_time, aw_dev->fade_out_time + 10);
++	}
++
++	if (i != AW88399_MUTE_VOL) {
++		aw_dev_set_volume(aw_dev, AW88399_MUTE_VOL);
++		usleep_range(aw_dev->fade_out_time, aw_dev->fade_out_time + 10);
++	}
++}
++
++void aw88399_dev_mute(struct aw_device *aw_dev, bool is_mute)
++{
++	if (is_mute) {
++		aw_dev_fade_out(aw_dev);
++		regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++				~AW88399_HMUTE_MASK, AW88399_HMUTE_ENABLE_VALUE);
++	} else {
++		regmap_update_bits(aw_dev->regmap, AW88399_SYSCTRL_REG,
++				~AW88399_HMUTE_MASK, AW88399_HMUTE_DISABLE_VALUE);
++		aw_dev_fade_in(aw_dev);
++	}
++}
++EXPORT_SYMBOL_GPL(aw88399_dev_mute);
++
++static void aw88399_dev_set_dither(struct aw88399 *aw88399, bool dither)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++
++	if (dither)
++		regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
++				~AW88399_DITHER_EN_MASK, AW88399_DITHER_EN_ENABLE_VALUE);
++	else
++		regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
++				~AW88399_DITHER_EN_MASK, AW88399_DITHER_EN_DISABLE_VALUE);
++}
++
++static int aw88399_dev_start(struct aw88399 *aw88399)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	int ret;
++
++	if (aw_dev->status == AW88399_DEV_PW_ON) {
++		dev_dbg(aw_dev->dev, "already power on");
++		return 0;
++	}
++
++	aw88399_dev_set_dither(aw88399, false);
++
++	/* power on */
++	aw_dev_pwd(aw_dev, false);
++	usleep_range(AW88399_2000_US, AW88399_2000_US + 10);
++
++	ret = aw_dev_check_syspll(aw_dev);
++	if (ret) {
++		dev_err(aw_dev->dev, "pll check failed cannot start");
++		goto pll_check_fail;
++	}
++
++	/* amppd on */
++	aw_dev_amppd(aw_dev, false);
++	usleep_range(AW88399_1000_US, AW88399_1000_US + 50);
++
++	/* check i2s status */
++	ret = aw_dev_check_sysst(aw88399);
++	if (ret) {
++		dev_err(aw_dev->dev, "sysst check failed");
++		goto sysst_check_fail;
++	}
++
++	if (aw_dev->dsp_cfg == AW88399_DEV_DSP_WORK) {
++		ret = aw_dev_hw_crc_check(aw88399);
++		if (ret) {
++			dev_err(aw_dev->dev, "dsp crc check failed");
++			goto crc_check_fail;
++		}
++		aw_dev_dsp_enable(aw_dev, false);
++		aw_dev_set_vcalb(aw88399);
++		aw_dev_update_cali_re(&aw_dev->cali_desc);
++
++		ret = aw_dev_dsp_check(aw_dev);
++		if (ret) {
++			dev_err(aw_dev->dev, "dsp status check failed");
++			goto dsp_check_fail;
++		}
++	} else {
++		dev_dbg(aw_dev->dev, "start pa with dsp bypass");
++	}
++
++	/* enable tx feedback */
++	aw_dev_i2s_tx_enable(aw_dev, true);
++
++	if (aw88399->dither_st == AW88399_DITHER_EN_ENABLE_VALUE)
++		aw88399_dev_set_dither(aw88399, true);
++
++	/* close mute */
++	aw88399_dev_mute(aw_dev, false);
++	/* clear inturrupt */
++	aw_dev_clear_int_status(aw_dev);
++	aw_dev->status = AW88399_DEV_PW_ON;
++
++	return 0;
++
++dsp_check_fail:
++crc_check_fail:
++	aw_dev_dsp_enable(aw_dev, false);
++sysst_check_fail:
++	aw_dev_clear_int_status(aw_dev);
++	aw_dev_amppd(aw_dev, true);
++pll_check_fail:
++	aw_dev_pwd(aw_dev, true);
++	aw_dev->status = AW88399_DEV_PW_OFF;
++
++	return ret;
++}
++
++static int aw_dev_dsp_update_container(struct aw_device *aw_dev,
++			unsigned char *data, unsigned int len, unsigned short base)
++{
++	u32 tmp_len;
++	int i, ret;
++
++	ret = regmap_write(aw_dev->regmap, AW88399_DSPMADD_REG, base);
++	if (ret)
++		return ret;
++
++	for (i = 0; i < len; i += AW88399_MAX_RAM_WRITE_BYTE_SIZE) {
++		tmp_len = min(len - i, AW88399_MAX_RAM_WRITE_BYTE_SIZE);
++		ret = regmap_raw_write(aw_dev->regmap, AW88399_DSPMDAT_REG,
++					&data[i], tmp_len);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++static int aw_dev_get_ra(struct aw_cali_desc *cali_desc)
++{
++	struct aw_device *aw_dev =
++		container_of(cali_desc, struct aw_device, cali_desc);
++	u32 dsp_ra;
++	int ret;
++
++	ret = aw_dev_dsp_read(aw_dev, AW88399_DSP_REG_CFG_ADPZ_RA,
++				&dsp_ra, AW_DSP_32_DATA);
++	if (ret) {
++		dev_err(aw_dev->dev, "read ra error");
++		return ret;
++	}
++
++	cali_desc->ra = AW88399_DSP_RE_TO_SHOW_RE(dsp_ra,
++					AW88399_DSP_RE_SHIFT);
++
++	return 0;
++}
++
++static int aw_dev_dsp_update_cfg(struct aw_device *aw_dev,
++			unsigned char *data, unsigned int len)
++{
++	int ret;
++
++	dev_dbg(aw_dev->dev, "dsp config len:%d", len);
++
++	if (!len || !data) {
++		dev_err(aw_dev->dev, "dsp config data is null or len is 0");
++		return -EINVAL;
++	}
++
++	ret = aw_dev_dsp_update_container(aw_dev, data, len, AW88399_DSP_CFG_ADDR);
++	if (ret)
++		return ret;
++
++	aw_dev->dsp_cfg_len = len;
++
++	ret = aw_dev_get_ra(&aw_dev->cali_desc);
++
++	return ret;
++}
++
++static int aw_dev_dsp_update_fw(struct aw_device *aw_dev,
++			unsigned char *data, unsigned int len)
++{
++	int ret;
++
++	dev_dbg(aw_dev->dev, "dsp firmware len:%d", len);
++
++	if (!len || !data) {
++		dev_err(aw_dev->dev, "dsp firmware data is null or len is 0");
++		return -EINVAL;
++	}
++
++	aw_dev->dsp_fw_len = len;
++	ret = aw_dev_dsp_update_container(aw_dev, data, len, AW88399_DSP_FW_ADDR);
++
++	return ret;
++}
++
++static int aw_dev_check_sram(struct aw_device *aw_dev)
++{
++	unsigned int reg_val;
++
++	/* read dsp_rom_check_reg */
++	aw_dev_dsp_read(aw_dev, AW88399_DSP_ROM_CHECK_ADDR, &reg_val, AW_DSP_16_DATA);
++	if (reg_val != AW88399_DSP_ROM_CHECK_DATA) {
++		dev_err(aw_dev->dev, "check dsp rom failed, read[0x%x] != check[0x%x]",
++						reg_val, AW88399_DSP_ROM_CHECK_DATA);
++		return -EPERM;
++	}
++
++	/* check dsp_cfg_base_addr */
++	aw_dev_dsp_write(aw_dev, AW88399_DSP_CFG_ADDR,
++				AW88399_DSP_ODD_NUM_BIT_TEST, AW_DSP_16_DATA);
++	aw_dev_dsp_read(aw_dev, AW88399_DSP_CFG_ADDR, &reg_val, AW_DSP_16_DATA);
++	if (reg_val != AW88399_DSP_ODD_NUM_BIT_TEST) {
++		dev_err(aw_dev->dev, "check dsp cfg failed, read[0x%x] != write[0x%x]",
++						reg_val, AW88399_DSP_ODD_NUM_BIT_TEST);
++		return -EPERM;
++	}
++
++	return 0;
++}
++
++static void aw_dev_select_memclk(struct aw_device *aw_dev, unsigned char flag)
++{
++	int ret;
++
++	switch (flag) {
++	case AW88399_DEV_MEMCLK_PLL:
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
++					~AW88399_MEM_CLKSEL_MASK,
++					AW88399_MEM_CLKSEL_DAPHCLK_VALUE);
++		if (ret)
++			dev_err(aw_dev->dev, "memclk select pll failed");
++		break;
++	case AW88399_DEV_MEMCLK_OSC:
++		ret = regmap_update_bits(aw_dev->regmap, AW88399_DBGCTRL_REG,
++					~AW88399_MEM_CLKSEL_MASK,
++					AW88399_MEM_CLKSEL_OSCCLK_VALUE);
++		if (ret)
++			dev_err(aw_dev->dev, "memclk select OSC failed");
++		break;
++	default:
++		dev_err(aw_dev->dev, "unknown memclk config, flag=0x%x", flag);
++		break;
++	}
++}
++
++static void aw_dev_get_cur_mode_st(struct aw_device *aw_dev)
++{
++	struct aw_profctrl_desc *profctrl_desc = &aw_dev->profctrl_desc;
++	unsigned int reg_val;
++	int ret;
++
++	ret = regmap_read(aw_dev->regmap, AW88399_SYSCTRL_REG, &reg_val);
++	if (ret) {
++		dev_dbg(aw_dev->dev, "%s failed", __func__);
++		return;
++	}
++	if ((reg_val & (~AW88399_RCV_MODE_MASK)) == AW88399_RCV_MODE_RECEIVER_VALUE)
++		profctrl_desc->cur_mode = AW88399_RCV_MODE;
++	else
++		profctrl_desc->cur_mode = AW88399_NOT_RCV_MODE;
++}
++
++static int aw_dev_update_reg_container(struct aw88399 *aw88399,
++				unsigned char *data, unsigned int len)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	struct aw_volume_desc *vol_desc = &aw_dev->volume_desc;
++	u16 read_vol, reg_val;
++	int data_len, i, ret;
++	int16_t *reg_data;
++	u8 reg_addr;
++
++	reg_data = (int16_t *)data;
++	data_len = len >> 1;
++
++	if (data_len & 0x1) {
++		dev_err(aw_dev->dev, "data len:%d unsupported",	data_len);
++		return -EINVAL;
++	}
++
++	for (i = 0; i < data_len; i += 2) {
++		reg_addr = reg_data[i];
++		reg_val = reg_data[i + 1];
++
++		if (reg_addr == AW88399_DSPVCALB_REG) {
++			aw88399->vcalb_init_val = reg_val;
++			continue;
++		}
++
++		if (reg_addr == AW88399_SYSCTRL_REG) {
++			if (reg_val & (~AW88399_DSPBY_MASK))
++				aw_dev->dsp_cfg = AW88399_DEV_DSP_BYPASS;
++			else
++				aw_dev->dsp_cfg = AW88399_DEV_DSP_WORK;
++
++			reg_val &= (AW88399_HMUTE_MASK | AW88399_PWDN_MASK |
++						AW88399_DSPBY_MASK);
++			reg_val |= (AW88399_HMUTE_ENABLE_VALUE | AW88399_PWDN_POWER_DOWN_VALUE |
++						AW88399_DSPBY_BYPASS_VALUE);
++		}
++
++		if (reg_addr == AW88399_I2SCTRL3_REG) {
++			reg_val &= AW88399_I2STXEN_MASK;
++			reg_val |= AW88399_I2STXEN_DISABLE_VALUE;
++		}
++
++		if (reg_addr == AW88399_SYSCTRL2_REG) {
++			read_vol = (reg_val & (~AW88399_VOL_MASK)) >>
++				AW88399_VOL_START_BIT;
++			aw_dev->volume_desc.init_volume = read_vol;
++		}
++
++		if (reg_addr == AW88399_DBGCTRL_REG) {
++			if ((reg_val & (~AW88399_EF_DBMD_MASK)) == AW88399_EF_DBMD_OR_VALUE)
++				aw88399->check_val = AW_EF_OR_CHECK;
++			else
++				aw88399->check_val = AW_EF_AND_CHECK;
++
++			aw88399->dither_st = reg_val & (~AW88399_DITHER_EN_MASK);
++		}
++
++		if (reg_addr == AW88399_CRCCTRL_REG)
++			aw88399->crc_init_val = reg_val;
++
++		ret = regmap_write(aw_dev->regmap, reg_addr, reg_val);
++		if (ret)
++			return ret;
++	}
++
++	aw_dev_pwd(aw_dev, false);
++	usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
++
++	aw_dev_get_cur_mode_st(aw_dev);
++
++	if (aw_dev->prof_cur != aw_dev->prof_index)
++		vol_desc->ctl_volume = 0;
++	else
++		aw_dev_set_volume(aw_dev, vol_desc->ctl_volume);
++
++	return 0;
++}
++
++static int aw_dev_reg_update(struct aw88399 *aw88399,
++					unsigned char *data, unsigned int len)
++{
++	int ret;
++
++	if (!len || !data) {
++		dev_err(aw88399->aw_pa->dev, "reg data is null or len is 0");
++		return -EINVAL;
++	}
++
++	ret = aw_dev_update_reg_container(aw88399, data, len);
++	if (ret)
++		dev_err(aw88399->aw_pa->dev, "reg update failed");
++
++	return ret;
++}
++
++int aw88399_dev_get_prof_name(struct aw_device *aw_dev, int index, char **prof_name)
++{
++	struct aw_prof_info *prof_info = &aw_dev->prof_info;
++	struct aw_prof_desc *prof_desc;
++
++	if ((index >= aw_dev->prof_info.count) || (index < 0)) {
++		dev_err(aw_dev->dev, "index[%d] overflow count[%d]",
++			index, aw_dev->prof_info.count);
++		return -EINVAL;
++	}
++
++	prof_desc = &aw_dev->prof_info.prof_desc[index];
++
++	*prof_name = prof_info->prof_name_list[prof_desc->id];
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(aw88399_dev_get_prof_name);
++
++static int aw88399_dev_get_prof_data(struct aw_device *aw_dev, int index,
++			struct aw_prof_desc **prof_desc)
++{
++	if ((index >= aw_dev->prof_info.count) || (index < 0)) {
++		dev_err(aw_dev->dev, "%s: index[%d] overflow count[%d]\n",
++				__func__, index, aw_dev->prof_info.count);
++		return -EINVAL;
++	}
++
++	*prof_desc = &aw_dev->prof_info.prof_desc[index];
++
++	return 0;
++}
++
++static int aw88399_dev_fw_update(struct aw88399 *aw88399, bool up_dsp_fw_en, bool force_up_en)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	struct aw_prof_desc *prof_index_desc;
++	struct aw_sec_data_desc *sec_desc;
++	char *prof_name;
++	int ret;
++
++	if ((aw_dev->prof_cur == aw_dev->prof_index) &&
++			(force_up_en == AW88399_FORCE_UPDATE_OFF)) {
++		dev_dbg(aw_dev->dev, "scene no change, not update");
++		return 0;
++	}
++
++	if (aw_dev->fw_status == AW88399_DEV_FW_FAILED) {
++		dev_err(aw_dev->dev, "fw status[%d] error", aw_dev->fw_status);
++		return -EPERM;
++	}
++
++	ret = aw88399_dev_get_prof_name(aw_dev, aw_dev->prof_index, &prof_name);
++	if (ret)
++		return ret;
++
++	dev_dbg(aw_dev->dev, "start update %s", prof_name);
++
++	ret = aw88399_dev_get_prof_data(aw_dev, aw_dev->prof_index, &prof_index_desc);
++	if (ret)
++		return ret;
++
++	/* update reg */
++	sec_desc = prof_index_desc->sec_desc;
++	ret = aw_dev_reg_update(aw88399, sec_desc[AW88395_DATA_TYPE_REG].data,
++					sec_desc[AW88395_DATA_TYPE_REG].len);
++	if (ret) {
++		dev_err(aw_dev->dev, "update reg failed");
++		return ret;
++	}
++
++	aw88399_dev_mute(aw_dev, true);
++
++	if (aw_dev->dsp_cfg == AW88399_DEV_DSP_WORK)
++		aw_dev_dsp_enable(aw_dev, false);
++
++	aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_OSC);
++
++	ret = aw_dev_check_sram(aw_dev);
++	if (ret) {
++		dev_err(aw_dev->dev, "check sram failed");
++		goto error;
++	}
++
++	if (up_dsp_fw_en) {
++		dev_dbg(aw_dev->dev, "fw_ver: [%x]", prof_index_desc->fw_ver);
++		ret = aw_dev_dsp_update_fw(aw_dev, sec_desc[AW88395_DATA_TYPE_DSP_FW].data,
++					sec_desc[AW88395_DATA_TYPE_DSP_FW].len);
++		if (ret) {
++			dev_err(aw_dev->dev, "update dsp fw failed");
++			goto error;
++		}
++	}
++
++	/* update dsp config */
++	ret = aw_dev_dsp_update_cfg(aw_dev, sec_desc[AW88395_DATA_TYPE_DSP_CFG].data,
++					sec_desc[AW88395_DATA_TYPE_DSP_CFG].len);
++	if (ret) {
++		dev_err(aw_dev->dev, "update dsp cfg failed");
++		goto error;
++	}
++
++	aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_PLL);
++
++	aw_dev->prof_cur = aw_dev->prof_index;
++
++	return 0;
++
++error:
++	aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_PLL);
++	return ret;
++}
++
++static void aw88399_start_pa(struct aw88399 *aw88399)
++{
++	int ret, i;
++
++	for (i = 0; i < AW88399_START_RETRIES; i++) {
++		ret = aw88399_dev_start(aw88399);
++		if (ret) {
++			dev_err(aw88399->aw_pa->dev, "aw88399 device start failed. retry = %d", i);
++			ret = aw88399_dev_fw_update(aw88399, AW88399_DSP_FW_UPDATE_ON, true);
++			if (ret) {
++				dev_err(aw88399->aw_pa->dev, "fw update failed");
++				continue;
++			}
++		} else {
++			dev_dbg(aw88399->aw_pa->dev, "start success\n");
++			break;
++		}
++	}
++}
++
++void aw88399_startup_work(struct work_struct *work)
++{
++	struct aw88399 *aw88399 =
++		container_of(work, struct aw88399, start_work.work);
++
++	mutex_lock(&aw88399->lock);
++	aw88399_start_pa(aw88399);
++	mutex_unlock(&aw88399->lock);
++}
++EXPORT_SYMBOL_GPL(aw88399_startup_work);
++
++void aw88399_start(struct aw88399 *aw88399, bool sync_start)
++{
++	int ret;
++
++	if (aw88399->aw_pa->fw_status != AW88399_DEV_FW_OK)
++		return;
++
++	if (aw88399->aw_pa->status == AW88399_DEV_PW_ON)
++		return;
++
++	ret = aw88399_dev_fw_update(aw88399, aw88399->fw_needs_reload ?
++		AW88399_DSP_FW_UPDATE_ON : AW88399_DSP_FW_UPDATE_OFF, true);
++	if (ret) {
++		dev_err(aw88399->aw_pa->dev, "fw update failed.");
++		return;
++	}
++
++	aw88399->fw_needs_reload = false;
++
++	if (sync_start == AW88399_SYNC_START)
++		aw88399_start_pa(aw88399);
++	else
++		queue_delayed_work(system_dfl_wq,
++			&aw88399->start_work,
++			AW88399_START_WORK_DELAY_MS);
++}
++EXPORT_SYMBOL_GPL(aw88399_start);
++
++static int aw_dev_check_sysint(struct aw_device *aw_dev)
++{
++	u16 reg_val;
++
++	aw_dev_get_int_status(aw_dev, &reg_val);
++	if (reg_val & AW88399_BIT_SYSINT_CHECK) {
++		dev_err(aw_dev->dev, "pa stop check fail:0x%04x", reg_val);
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++int aw88399_stop(struct aw_device *aw_dev)
++{
++	struct aw_sec_data_desc *dsp_cfg =
++		&aw_dev->prof_info.prof_desc[aw_dev->prof_cur].sec_desc[AW88395_DATA_TYPE_DSP_CFG];
++	struct aw_sec_data_desc *dsp_fw =
++		&aw_dev->prof_info.prof_desc[aw_dev->prof_cur].sec_desc[AW88395_DATA_TYPE_DSP_FW];
++	int int_st;
++
++	if (aw_dev->status == AW88399_DEV_PW_OFF) {
++		dev_dbg(aw_dev->dev, "already power off");
++		return 0;
++	}
++
++	aw_dev->status = AW88399_DEV_PW_OFF;
++
++	aw88399_dev_mute(aw_dev, true);
++	usleep_range(AW88399_4000_US, AW88399_4000_US + 100);
++
++	aw_dev_i2s_tx_enable(aw_dev, false);
++	usleep_range(AW88399_1000_US, AW88399_1000_US + 100);
++
++	int_st = aw_dev_check_sysint(aw_dev);
++
++	aw_dev_dsp_enable(aw_dev, false);
++
++	aw_dev_amppd(aw_dev, true);
++
++	if (int_st) {
++		aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_OSC);
++		aw_dev_dsp_update_fw(aw_dev, dsp_fw->data, dsp_fw->len);
++		aw_dev_dsp_update_cfg(aw_dev, dsp_cfg->data, dsp_cfg->len);
++		aw_dev_select_memclk(aw_dev, AW88399_DEV_MEMCLK_PLL);
++	}
++
++	aw_dev_pwd(aw_dev, true);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(aw88399_stop);
++
++static int aw88399_dev_init(struct aw88399 *aw88399, struct aw_container *aw_cfg)
++{
++	struct aw_device *aw_dev = aw88399->aw_pa;
++	int ret;
++
++	ret = aw88395_dev_cfg_load(aw_dev, aw_cfg);
++	if (ret) {
++		dev_err(aw_dev->dev, "aw_dev acf parse failed");
++		return -EINVAL;
++	}
++	aw_dev->fade_in_time = AW88399_1000_US / 10;
++	aw_dev->fade_out_time = AW88399_1000_US >> 1;
++	aw_dev->prof_cur = aw_dev->prof_info.prof_desc[0].id;
++	aw_dev->prof_index = aw_dev->prof_info.prof_desc[0].id;
++
++	ret = aw88399_dev_fw_update(aw88399, AW88399_FORCE_UPDATE_ON, AW88399_DSP_FW_UPDATE_ON);
++	if (ret) {
++		dev_err(aw_dev->dev, "fw update failed ret = %d\n", ret);
++		return ret;
++	}
++
++	aw88399_dev_mute(aw_dev, true);
++
++	/* close tx feedback */
++	aw_dev_i2s_tx_enable(aw_dev, false);
++	usleep_range(AW88399_1000_US, AW88399_1000_US + 100);
++
++	/* enable amppd */
++	aw_dev_amppd(aw_dev, true);
++
++	/* close dsp */
++	aw_dev_dsp_enable(aw_dev, false);
++	/* set power down */
++	aw_dev_pwd(aw_dev, true);
++
++	return 0;
++}
++
++int aw88399_request_firmware_file(struct aw88399 *aw88399)
++{
++	const struct firmware *cont = NULL;
++	int ret;
++
++	aw88399->aw_pa->fw_status = AW88399_DEV_FW_FAILED;
++
++	ret = request_firmware(&cont, AW88399_ACF_FILE, aw88399->aw_pa->dev);
++	if (ret) {
++		dev_err(aw88399->aw_pa->dev, "request [%s] failed!", AW88399_ACF_FILE);
++		return ret;
++	}
++
++	dev_dbg(aw88399->aw_pa->dev, "loaded %s - size: %zu\n",
++			AW88399_ACF_FILE, cont ? cont->size : 0);
++
++	aw88399->aw_cfg = devm_kzalloc(aw88399->aw_pa->dev,
++			struct_size(aw88399->aw_cfg, data, cont->size), GFP_KERNEL);
++	if (!aw88399->aw_cfg) {
++		release_firmware(cont);
++		return -ENOMEM;
++	}
++	aw88399->aw_cfg->len = (int)cont->size;
++	memcpy(aw88399->aw_cfg->data, cont->data, cont->size);
++	release_firmware(cont);
++
++	ret = aw88395_dev_load_acf_check(aw88399->aw_pa, aw88399->aw_cfg);
++	if (ret) {
++		dev_err(aw88399->aw_pa->dev, "load [%s] failed!", AW88399_ACF_FILE);
++		return ret;
++	}
++
++	mutex_lock(&aw88399->lock);
++	/* aw device init */
++	ret = aw88399_dev_init(aw88399, aw88399->aw_cfg);
++	if (ret)
++		dev_err(aw88399->aw_pa->dev, "dev init failed");
++	mutex_unlock(&aw88399->lock);
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(aw88399_request_firmware_file);
++
++void aw88399_hw_reset(struct aw88399 *aw88399)
++{
++	if (aw88399->reset_gpio) {
++		gpiod_set_value_cansleep(aw88399->reset_gpio, 1);
++		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
++		gpiod_set_value_cansleep(aw88399->reset_gpio, 0);
++		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
++		gpiod_set_value_cansleep(aw88399->reset_gpio, 1);
++		usleep_range(AW88399_1000_US, AW88399_1000_US + 10);
++	}
++}
++EXPORT_SYMBOL_GPL(aw88399_hw_reset);
++
++static void aw88399_parse_channel_dt(struct aw_device *aw_dev)
++{
++	struct device_node *np = aw_dev->dev->of_node;
++	u32 channel_value;
++	int ret;
++
++	ret = of_property_read_u32(np, "awinic,audio-channel", &channel_value);
++	if (ret) {
++		/*
++		 * On ACPI systems, DT properties don't exist. Derive channel
++		 * from I2C address: 0x34 -> channel 0 (left), 0x35 -> channel 1 (right)
++		 */
++		aw_dev->channel = aw_dev->i2c->addr - 0x34;
++		dev_dbg(aw_dev->dev,
++			"DT channel property not found, using I2C address-based channel %d (addr 0x%02x)\n",
++			aw_dev->channel, aw_dev->i2c->addr);
++		return;
++	}
++	aw_dev->channel = channel_value;
++}
++
++int aw88399_init(struct aw88399 *aw88399, struct i2c_client *i2c, struct regmap *regmap)
++{
++	struct aw_device *aw_dev;
++	unsigned int chip_id;
++	int ret;
++
++	ret = regmap_read(regmap, AW88399_ID_REG, &chip_id);
++	if (ret) {
++		dev_err(&i2c->dev, "%s read chipid error. ret = %d", __func__, ret);
++		return ret;
++	}
++	if (chip_id != AW88399_CHIP_ID) {
++		dev_err(&i2c->dev, "unsupported device");
++		return -ENXIO;
++	}
++	dev_dbg(&i2c->dev, "chip id = %x\n", chip_id);
++
++	aw_dev = devm_kzalloc(&i2c->dev, sizeof(*aw_dev), GFP_KERNEL);
++	if (!aw_dev)
++		return -ENOMEM;
++	aw88399->aw_pa = aw_dev;
++
++	aw_dev->i2c = i2c;
++	aw_dev->dev = &i2c->dev;
++	aw_dev->regmap = regmap;
++	mutex_init(&aw_dev->dsp_lock);
++
++	aw_dev->chip_id = chip_id;
++	aw_dev->acf = NULL;
++	aw_dev->prof_info.prof_desc = NULL;
++	aw_dev->prof_info.count = 0;
++	aw_dev->prof_info.prof_type = AW88395_DEV_NONE_TYPE_ID;
++	aw_dev->channel = AW88399_DEV_DEFAULT_CH;
++	aw_dev->fw_status = AW88399_DEV_FW_FAILED;
++
++	aw_dev->fade_step = AW88399_VOLUME_STEP_DB;
++	aw_dev->volume_desc.ctl_volume = AW88399_VOL_DEFAULT_VALUE;
++
++	aw88399_parse_channel_dt(aw_dev);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(aw88399_init);
++
++void aw88399_dev_set_channel(struct aw88399 *aw88399, int channel)
++{
++	aw88399->aw_pa->channel = channel;
++}
++EXPORT_SYMBOL_GPL(aw88399_dev_set_channel);
++
++MODULE_DESCRIPTION("AW88399 common device library");
++MODULE_LICENSE("GPL");
+diff -rupN linux-7.1.4/sound/soc/codecs/Kconfig linux-7.1.4_patch_series/sound/soc/codecs/Kconfig
+--- linux-7.1.4/sound/soc/codecs/Kconfig	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/sound/soc/codecs/Kconfig	2026-07-20 11:49:16.500542215 +0200
+@@ -722,6 +722,10 @@ config SND_SOC_AW87390
+ 	  sound quality, which is a new high efficiency, low
+ 	  noise, constant large volume, 6th Smart K audio amplifier.
+ 
++config SND_SOC_AW88399_LIB
++	tristate
++	select SND_SOC_AW88395_LIB
++
+ config SND_SOC_AW88399
+ 	tristate "Soc Audio for awinic aw88399"
+ 	depends on I2C
+@@ -729,6 +733,7 @@ config SND_SOC_AW88399
+ 	select REGMAP_I2C
+ 	select GPIOLIB
+ 	select SND_SOC_AW88395_LIB
++	select SND_SOC_AW88399_LIB
+ 	help
+ 	  This option enables support for aw88399 Smart PA.
+ 	  The awinic AW88399 is an I2S/TDM input, high efficiency
+diff -rupN linux-7.1.4/sound/soc/codecs/Makefile linux-7.1.4_patch_series/sound/soc/codecs/Makefile
+--- linux-7.1.4/sound/soc/codecs/Makefile	2026-07-18 16:55:52.000000000 +0200
++++ linux-7.1.4_patch_series/sound/soc/codecs/Makefile	2026-07-20 11:49:16.501420508 +0200
+@@ -55,6 +55,7 @@ snd-soc-aw88395-y := aw88395/aw88395.o
+ snd-soc-aw88166-y := aw88166.o
+ snd-soc-aw88261-y := aw88261.o
+ snd-soc-aw88399-y := aw88399.o
++snd-soc-aw88399-lib-y := aw88399-lib.o
+ snd-soc-bd28623-y := bd28623.o
+ snd-soc-bt-sco-y := bt-sco.o
+ snd-soc-chv3-codec-y := chv3-codec.o
+@@ -492,6 +493,7 @@ obj-$(CONFIG_SND_SOC_AW88395)	+=snd-soc-
+ obj-$(CONFIG_SND_SOC_AW88166)	+=snd-soc-aw88166.o
+ obj-$(CONFIG_SND_SOC_AW88261)	+=snd-soc-aw88261.o
+ obj-$(CONFIG_SND_SOC_AW88399)	+= snd-soc-aw88399.o
++obj-$(CONFIG_SND_SOC_AW88399_LIB) += snd-soc-aw88399-lib.o
+ obj-$(CONFIG_SND_SOC_BD28623)	+= snd-soc-bd28623.o
+ obj-$(CONFIG_SND_SOC_BT_SCO)	+= snd-soc-bt-sco.o
+ obj-$(CONFIG_SND_SOC_CHV3_CODEC) += snd-soc-chv3-codec.o
