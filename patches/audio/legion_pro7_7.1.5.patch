@@ -1,6 +1,6 @@
-diff -rupN linux-7.1.4/drivers/acpi/scan.c linux-7.1.4_patch_series/drivers/acpi/scan.c
---- linux-7.1.4/drivers/acpi/scan.c	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/drivers/acpi/scan.c	2026-07-20 11:49:16.492751325 +0200
+diff -rupN linux-7.1.5/drivers/acpi/scan.c linux-7.1.5_patch_series/drivers/acpi/scan.c
+--- linux-7.1.5/drivers/acpi/scan.c	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/drivers/acpi/scan.c	2026-07-28 21:48:24.810984096 +0200
 @@ -1750,6 +1750,7 @@ static bool acpi_device_enumeration_by_p
  	 * by the drivers/platform/x86/serial-multi-instantiate.c driver, which
  	 * knows which client device id to use for each resource.
@@ -9,9 +9,9 @@ diff -rupN linux-7.1.4/drivers/acpi/scan.c linux-7.1.4_patch_series/drivers/acpi
  		{"BSG1160", },
  		{"BSG2150", },
  		{"CSC3551", },
-diff -rupN linux-7.1.4/drivers/platform/x86/serial-multi-instantiate.c linux-7.1.4_patch_series/drivers/platform/x86/serial-multi-instantiate.c
---- linux-7.1.4/drivers/platform/x86/serial-multi-instantiate.c	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/drivers/platform/x86/serial-multi-instantiate.c	2026-07-20 11:49:16.494751323 +0200
+diff -rupN linux-7.1.5/drivers/platform/x86/serial-multi-instantiate.c linux-7.1.5_patch_series/drivers/platform/x86/serial-multi-instantiate.c
+--- linux-7.1.5/drivers/platform/x86/serial-multi-instantiate.c	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/drivers/platform/x86/serial-multi-instantiate.c	2026-07-28 21:48:24.812204989 +0200
 @@ -307,6 +307,15 @@ static void smi_remove(struct platform_d
  	smi_devs_unregister(smi);
  }
@@ -36,9 +36,9 @@ diff -rupN linux-7.1.4/drivers/platform/x86/serial-multi-instantiate.c linux-7.1
  	{ "BSG1160", (unsigned long)&bsg1160_data },
  	{ "BSG2150", (unsigned long)&bsg2150_data },
  	{ "CSC3551", (unsigned long)&cs35l41_hda },
-diff -rupN linux-7.1.4/include/sound/aw88399.h linux-7.1.4_patch_series/include/sound/aw88399.h
---- linux-7.1.4/include/sound/aw88399.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-7.1.4_patch_series/include/sound/aw88399.h	2026-07-20 11:49:16.496296781 +0200
+diff -rupN linux-7.1.5/include/sound/aw88399.h linux-7.1.5_patch_series/include/sound/aw88399.h
+--- linux-7.1.5/include/sound/aw88399.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.5_patch_series/include/sound/aw88399.h	2026-07-28 21:48:14.992167852 +0200
 @@ -0,0 +1,621 @@
 +/* SPDX-License-Identifier: GPL-2.0-only
 + *
@@ -661,9 +661,9 @@ diff -rupN linux-7.1.4/include/sound/aw88399.h linux-7.1.4_patch_series/include/
 +int aw88399_stop(struct aw_device *aw_dev);
 +
 +#endif /* __SOUND_AW88399_H */
-diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_series/sound/hda/codecs/realtek/alc269.c
---- linux-7.1.4/sound/hda/codecs/realtek/alc269.c	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/sound/hda/codecs/realtek/alc269.c	2026-07-20 11:49:16.497238745 +0200
+diff -rupN linux-7.1.5/sound/hda/codecs/realtek/alc269.c linux-7.1.5_patch_series/sound/hda/codecs/realtek/alc269.c
+--- linux-7.1.5/sound/hda/codecs/realtek/alc269.c	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/sound/hda/codecs/realtek/alc269.c	2026-07-28 21:49:53.284162466 +0200
 @@ -3262,6 +3262,34 @@ static void find_cirrus_companion_amps(s
  	comp_generic_fixup(cdc, HDA_FIXUP_ACT_PRE_PROBE, bus, acpi_ids[i].hid, match, count);
  }
@@ -699,7 +699,7 @@ diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_serie
  static void cs35l41_fixup_i2c_two(struct hda_codec *cdc, const struct hda_fixup *fix, int action)
  {
  	comp_generic_fixup(cdc, action, "i2c", "CSC3551", "-%s:00-cs35l41-hda.%d", 2);
-@@ -4155,6 +4183,8 @@ enum {
+@@ -4156,6 +4184,8 @@ enum {
  	ALC236_FIXUP_HP_DMIC,
  	ALC256_FIXUP_HONOR_MRB_XXX_M1020_AUDIO,
  	ALC245_FIXUP_HP_ENVY_X360_15_FH0XXX,
@@ -708,7 +708,7 @@ diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_serie
  };
  
  /* A special fixup for Lenovo C940 and Yoga Duet 7;
-@@ -6727,7 +6757,17 @@ static const struct hda_fixup alc269_fix
+@@ -6735,7 +6765,17 @@ static const struct hda_fixup alc269_fix
  		.v.func = cs35l41_fixup_i2c_two,
  		.chained = true,
  		.chain_id = ALC245_FIXUP_HP_X360_MUTE_LEDS
@@ -727,7 +727,7 @@ diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_serie
  };
  
  static const struct hda_quirk alc269_fixup_tbl[] = {
-@@ -7750,6 +7790,11 @@ static const struct hda_quirk alc269_fix
+@@ -7759,6 +7799,11 @@ static const struct hda_quirk alc269_fix
  	SND_PCI_QUIRK(0x17aa, 0x38b8, "Yoga S780-14.5 proX AMD YC Dual", ALC287_FIXUP_TAS2781_I2C),
  	SND_PCI_QUIRK(0x17aa, 0x38b9, "Yoga S780-14.5 proX AMD LX Dual", ALC287_FIXUP_TAS2781_I2C),
  	SND_PCI_QUIRK(0x17aa, 0x38ba, "Yoga S780-14.5 Air AMD quad YC", ALC287_FIXUP_TAS2781_I2C),
@@ -739,7 +739,7 @@ diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_serie
  	SND_PCI_QUIRK(0x17aa, 0x38bb, "Yoga S780-14.5 Air AMD quad AAC", ALC287_FIXUP_TAS2781_I2C),
  	SND_PCI_QUIRK(0x17aa, 0x38be, "Yoga S980-14.5 proX YC Dual", ALC287_FIXUP_TAS2781_I2C),
  	SND_PCI_QUIRK(0x17aa, 0x38bf, "Yoga S980-14.5 proX LX Dual", ALC287_FIXUP_TAS2781_I2C),
-@@ -7782,6 +7818,8 @@ static const struct hda_quirk alc269_fix
+@@ -7782,6 +7827,8 @@ static const struct hda_quirk alc269_fix
  	SND_PCI_QUIRK(0x17aa, 0x38fc, "Lenovo Yoga Pro 7 15ASH11", ALC287_FIXUP_LENOVO_YOGA_PRO7),
  	SND_PCI_QUIRK(0x17aa, 0x38fd, "ThinkBook plus Gen5 Hybrid", ALC287_FIXUP_TAS2781_I2C),
  	SND_PCI_QUIRK(0x17aa, 0x3902, "Lenovo E50-80", ALC269_FIXUP_DMIC_THINKPAD_ACPI),
@@ -748,7 +748,7 @@ diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_serie
  	SND_PCI_QUIRK(0x17aa, 0x390d, "Lenovo Yoga Pro 7 14ASP10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
  	SND_PCI_QUIRK(0x17aa, 0x3911, "Lenovo Yoga Pro 7 14IAH10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
  	SND_PCI_QUIRK(0x17aa, 0x3913, "Lenovo 145", ALC236_FIXUP_LENOVO_INV_DMIC),
-@@ -7781,6 +7828,8 @@ static const struct hda_quirk alc269_fix
+@@ -7790,6 +7837,8 @@ static const struct hda_quirk alc269_fix
  	SND_PCI_QUIRK(0x17aa, 0x3920, "Yoga S990-16 pro Quad VECO Quad", ALC287_FIXUP_TXNW2781_I2C),
  	SND_PCI_QUIRK(0x17aa, 0x3929, "Thinkbook 13x Gen 5", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD),
  	SND_PCI_QUIRK(0x17aa, 0x392b, "Thinkbook 13x Gen 5", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD),
@@ -757,7 +757,7 @@ diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_serie
  	HDA_CODEC_QUIRK(0x17aa, 0x394c, "Lenovo Yoga Slim 7 14AGP11", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
  	SND_PCI_QUIRK(0x17aa, 0x3977, "IdeaPad S210", ALC283_FIXUP_INT_MIC),
  	SND_PCI_QUIRK(0x17aa, 0x3978, "Lenovo B50-70", ALC269_FIXUP_DMIC_THINKPAD_ACPI),
-@@ -8074,6 +8123,7 @@ static const struct hda_model_fixup alc2
+@@ -8084,6 +8133,7 @@ static const struct hda_model_fixup alc2
  	{.id = ALC2XX_FIXUP_HEADSET_MIC, .name = "alc2xx-fixup-headset-mic"},
  	{.id = ALC245_FIXUP_BASS_HP_DAC, .name = "alc245-fixup-bass-hp-dac"},
  	{.id = ALC256_FIXUP_HONOR_MRB_XXX_M1020_AUDIO, .name = "alc256-honor-mrb-xxx-m1020-audio"},
@@ -765,10 +765,10 @@ diff -rupN linux-7.1.4/sound/hda/codecs/realtek/alc269.c linux-7.1.4_patch_serie
  	{}
  };
  #define ALC225_STANDARD_PINS \
-diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.c
---- linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.c	2026-07-20 11:49:16.497854835 +0200
-@@ -0,0 +1,371 @@
+diff -rupN linux-7.1.5/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.c
+--- linux-7.1.5/sound/hda/codecs/side-codecs/aw88399_hda.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.c	2026-07-28 21:48:51.080246893 +0200
+@@ -0,0 +1,372 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +//
 +// AW88399 HDA side codec driver
@@ -974,7 +974,6 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.1.4_pa
 +	aw88399->acpi_subsystem_id = NULL;
 +
 +	adev = acpi_dev_get_first_match_dev("AWDZ8399", NULL, -1);
-+
 +	if (!adev) {
 +		dev_err(aw88399->dev, "Failed to find an ACPI device for AWDZ8399\n");
 +		return -ENODEV;
@@ -982,25 +981,28 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.1.4_pa
 +
 +	physdev = get_device(acpi_get_first_physical_node(adev));
 +	acpi_dev_put(adev);
-+
 +	if (!physdev)
 +		return -ENODEV;
 +
 +	sub = acpi_get_subsystem_id(ACPI_HANDLE(physdev));
 +	put_device(physdev);
-+	if (!IS_ERR_OR_NULL(sub))
-+		aw88399->acpi_subsystem_id = sub;
++	if (IS_ERR_OR_NULL(sub))
++		return 0;
 +
-+	if (aw88399->acpi_subsystem_id) {
-+		for (model = aw88399_prop_model_table; model->ssid; model++) {
-+			if (!strcasecmp(model->ssid, aw88399->acpi_subsystem_id)) {
-+				dev_info(aw88399->dev,
-+					 "Applying properties for SSID %s\n",
-+					 aw88399->acpi_subsystem_id);
-+				return model->apply_prop(aw88399);
-+			}
++	aw88399->acpi_subsystem_id = devm_kstrdup(aw88399->dev, sub, GFP_KERNEL);
++	kfree(sub);
++	if (!aw88399->acpi_subsystem_id)
++		return -ENOMEM;
++
++	for (model = aw88399_prop_model_table; model->ssid; model++) {
++		if (!strcasecmp(model->ssid, aw88399->acpi_subsystem_id)) {
++			dev_info(aw88399->dev,
++				 "Applying properties for SSID %s\n",
++				 aw88399->acpi_subsystem_id);
++			return model->apply_prop(aw88399);
 +		}
 +	}
++
 +	return 0;
 +}
 +
@@ -1062,7 +1064,6 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.1.4_pa
 +		aw88399_stop(aw88399->aw_dev);
 +
 +	component_del(dev, &aw88399_hda_comp_ops);
-+	kfree(aw88399->acpi_subsystem_id);
 +
 +	dev_dbg(aw88399->dev, "AW88399 HDA side codec removed\n");
 +}
@@ -1140,9 +1141,9 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.c linux-7.1.4_pa
 +MODULE_AUTHOR("Marco Giunta <marco_giunta@outlook.it>");
 +MODULE_LICENSE("GPL");
 +MODULE_FIRMWARE("aw88399_acf.bin");
-diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.h linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.h
---- linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.h	2026-07-20 11:49:16.497931960 +0200
+diff -rupN linux-7.1.5/sound/hda/codecs/side-codecs/aw88399_hda.h linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.h
+--- linux-7.1.5/sound/hda/codecs/side-codecs/aw88399_hda.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/aw88399_hda.h	2026-07-28 21:48:44.293980706 +0200
 @@ -0,0 +1,36 @@
 +/* SPDX-License-Identifier: GPL-2.0-only
 + *
@@ -1180,9 +1181,9 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda.h linux-7.1.4_pa
 +extern const struct dev_pm_ops aw88399_hda_pm_ops;
 +
 +#endif /* __AW88399_HDA_H__ */
-diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c
---- linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	2026-07-20 11:49:16.497990029 +0200
+diff -rupN linux-7.1.5/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c
+--- linux-7.1.5/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c	2026-07-28 21:48:44.294009861 +0200
 @@ -0,0 +1,54 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +//
@@ -1238,9 +1239,9 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/aw88399_hda_i2c.c linux-7.1.
 +MODULE_IMPORT_NS("SND_HDA_SCODEC_AW88399");
 +MODULE_AUTHOR("Yakov Till <yakov.till@gmail.com>");
 +MODULE_LICENSE("GPL");
-diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/Kconfig linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Kconfig
---- linux-7.1.4/sound/hda/codecs/side-codecs/Kconfig	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Kconfig	2026-07-20 11:49:16.498091661 +0200
+diff -rupN linux-7.1.5/sound/hda/codecs/side-codecs/Kconfig linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/Kconfig
+--- linux-7.1.5/sound/hda/codecs/side-codecs/Kconfig	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/Kconfig	2026-07-28 21:48:44.293682691 +0200
 @@ -13,6 +13,24 @@ config SND_HDA_CIRRUS_SCODEC_KUNIT_TEST
  	  Documentation/dev-tools/kunit/.
  	  If in doubt, say "N".
@@ -1266,9 +1267,9 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/Kconfig linux-7.1.4_patch_se
  config SND_HDA_SCODEC_CS35L41
  	tristate
  	select SND_HDA_GENERIC
-diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/Makefile linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Makefile
---- linux-7.1.4/sound/hda/codecs/side-codecs/Makefile	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/sound/hda/codecs/side-codecs/Makefile	2026-07-20 11:49:16.498338555 +0200
+diff -rupN linux-7.1.5/sound/hda/codecs/side-codecs/Makefile linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/Makefile
+--- linux-7.1.5/sound/hda/codecs/side-codecs/Makefile	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/sound/hda/codecs/side-codecs/Makefile	2026-07-28 21:48:44.293842164 +0200
 @@ -3,6 +3,8 @@ subdir-ccflags-y += -I$(src)/../../commo
  
  snd-hda-cirrus-scodec-y :=	cirrus_scodec.o
@@ -1287,9 +1288,9 @@ diff -rupN linux-7.1.4/sound/hda/codecs/side-codecs/Makefile linux-7.1.4_patch_s
  obj-$(CONFIG_SND_HDA_SCODEC_CS35L41) += snd-hda-scodec-cs35l41.o
  obj-$(CONFIG_SND_HDA_SCODEC_CS35L41_I2C) += snd-hda-scodec-cs35l41-i2c.o
  obj-$(CONFIG_SND_HDA_SCODEC_CS35L41_SPI) += snd-hda-scodec-cs35l41-spi.o
-diff -rupN linux-7.1.4/sound/soc/codecs/aw88399.c linux-7.1.4_patch_series/sound/soc/codecs/aw88399.c
---- linux-7.1.4/sound/soc/codecs/aw88399.c	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/sound/soc/codecs/aw88399.c	2026-07-20 11:49:16.499007906 +0200
+diff -rupN linux-7.1.5/sound/soc/codecs/aw88399.c linux-7.1.5_patch_series/sound/soc/codecs/aw88399.c
+--- linux-7.1.5/sound/soc/codecs/aw88399.c	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/sound/soc/codecs/aw88399.c	2026-07-28 21:47:50.006685736 +0200
 @@ -10,1217 +10,12 @@
  #include <linux/crc32.h>
  #include <linux/gpio/consumer.h>
@@ -2666,9 +2667,9 @@ diff -rupN linux-7.1.4/sound/soc/codecs/aw88399.c linux-7.1.4_patch_series/sound
  static int aw88399_i2c_probe(struct i2c_client *i2c)
  {
  	struct aw88399 *aw88399;
-diff -rupN linux-7.1.4/sound/soc/codecs/aw88399.h linux-7.1.4_patch_series/sound/soc/codecs/aw88399.h
---- linux-7.1.4/sound/soc/codecs/aw88399.h	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/sound/soc/codecs/aw88399.h	2026-07-20 11:49:16.499734885 +0200
+diff -rupN linux-7.1.5/sound/soc/codecs/aw88399.h linux-7.1.5_patch_series/sound/soc/codecs/aw88399.h
+--- linux-7.1.5/sound/soc/codecs/aw88399.h	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/sound/soc/codecs/aw88399.h	2026-07-28 21:47:50.007127182 +0200
 @@ -10,512 +10,10 @@
  #ifndef __AW88399_H__
  #define __AW88399_H__
@@ -3265,9 +3266,9 @@ diff -rupN linux-7.1.4/sound/soc/codecs/aw88399.h linux-7.1.4_patch_series/sound
 -
 -#endif
 +#endif /* __AW88399_H__ */
-diff -rupN linux-7.1.4/sound/soc/codecs/aw88399-lib.c linux-7.1.4_patch_series/sound/soc/codecs/aw88399-lib.c
---- linux-7.1.4/sound/soc/codecs/aw88399-lib.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-7.1.4_patch_series/sound/soc/codecs/aw88399-lib.c	2026-07-20 11:49:16.499904935 +0200
+diff -rupN linux-7.1.5/sound/soc/codecs/aw88399-lib.c linux-7.1.5_patch_series/sound/soc/codecs/aw88399-lib.c
+--- linux-7.1.5/sound/soc/codecs/aw88399-lib.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-7.1.5_patch_series/sound/soc/codecs/aw88399-lib.c	2026-07-28 21:48:14.992285475 +0200
 @@ -0,0 +1,1411 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +//
@@ -4680,9 +4681,9 @@ diff -rupN linux-7.1.4/sound/soc/codecs/aw88399-lib.c linux-7.1.4_patch_series/s
 +
 +MODULE_DESCRIPTION("AW88399 common device library");
 +MODULE_LICENSE("GPL");
-diff -rupN linux-7.1.4/sound/soc/codecs/Kconfig linux-7.1.4_patch_series/sound/soc/codecs/Kconfig
---- linux-7.1.4/sound/soc/codecs/Kconfig	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/sound/soc/codecs/Kconfig	2026-07-20 11:49:16.500542215 +0200
+diff -rupN linux-7.1.5/sound/soc/codecs/Kconfig linux-7.1.5_patch_series/sound/soc/codecs/Kconfig
+--- linux-7.1.5/sound/soc/codecs/Kconfig	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/sound/soc/codecs/Kconfig	2026-07-28 21:47:50.005957025 +0200
 @@ -722,6 +722,10 @@ config SND_SOC_AW87390
  	  sound quality, which is a new high efficiency, low
  	  noise, constant large volume, 6th Smart K audio amplifier.
@@ -4702,9 +4703,9 @@ diff -rupN linux-7.1.4/sound/soc/codecs/Kconfig linux-7.1.4_patch_series/sound/s
  	help
  	  This option enables support for aw88399 Smart PA.
  	  The awinic AW88399 is an I2S/TDM input, high efficiency
-diff -rupN linux-7.1.4/sound/soc/codecs/Makefile linux-7.1.4_patch_series/sound/soc/codecs/Makefile
---- linux-7.1.4/sound/soc/codecs/Makefile	2026-07-18 16:55:52.000000000 +0200
-+++ linux-7.1.4_patch_series/sound/soc/codecs/Makefile	2026-07-20 11:49:16.501420508 +0200
+diff -rupN linux-7.1.5/sound/soc/codecs/Makefile linux-7.1.5_patch_series/sound/soc/codecs/Makefile
+--- linux-7.1.5/sound/soc/codecs/Makefile	2026-07-24 16:21:27.000000000 +0200
++++ linux-7.1.5_patch_series/sound/soc/codecs/Makefile	2026-07-28 21:47:50.006219433 +0200
 @@ -55,6 +55,7 @@ snd-soc-aw88395-y := aw88395/aw88395.o
  snd-soc-aw88166-y := aw88166.o
  snd-soc-aw88261-y := aw88261.o
