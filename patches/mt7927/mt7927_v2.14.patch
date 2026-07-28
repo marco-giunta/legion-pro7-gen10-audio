@@ -1,0 +1,1673 @@
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac.h linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac.h
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac.h	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac.h	2026-07-06 18:41:22.256021408 +0200
+@@ -172,11 +172,26 @@ struct mt76_connac_tx_free {
+ 
+ extern const struct wiphy_wowlan_support mt76_connac_wowlan_support;
+ 
++static inline bool is_connac3(struct mt76_dev *dev)
++{
++	return mt76_chip(dev) == 0x7925 || mt76_chip(dev) == 0x7927;
++}
++
+ static inline bool is_mt7925(struct mt76_dev *dev)
+ {
+ 	return mt76_chip(dev) == 0x7925;
+ }
+ 
++static inline bool is_mt7927(struct mt76_dev *dev)
++{
++	return mt76_chip(dev) == 0x7927;
++}
++
++static inline bool is_320mhz_supported(struct mt76_dev *dev)
++{
++	return mt76_chip(dev) == 0x7927;
++}
++
+ static inline bool is_mt7920(struct mt76_dev *dev)
+ {
+ 	return mt76_chip(dev) == 0x7920;
+@@ -279,6 +294,7 @@ static inline bool is_mt76_fw_txp(struct
+ 	case 0x7922:
+ 	case 0x7902:
+ 	case 0x7925:
++	case 0x7927:
+ 	case 0x7663:
+ 	case 0x7622:
+ 		return false;
+@@ -420,7 +436,10 @@ mt76_connac_mutex_release(struct mt76_de
+ void mt76_connac_gen_ppe_thresh(u8 *he_ppet, int nss, enum nl80211_band band);
+ int mt76_connac_init_tx_queues(struct mt76_phy *phy, int idx, int n_desc,
+ 			       int ring_base, void *wed, u32 flags);
+-
++void mt76_connac_set_txpower_cur(struct mt76_phy *phy, s8 max_power);
++s8 mt76_connac_get_rate_power_limit(struct mt76_phy *phy,
++				    struct ieee80211_channel *chan,
++				    struct mt76_power_limits *limits);
+ void mt76_connac_write_hw_txp(struct mt76_dev *dev,
+ 			      struct mt76_tx_info *tx_info,
+ 			      void *txp_ptr, u32 id);
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac_mac.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac_mac.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac_mac.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac_mac.c	2026-07-06 18:41:22.254367362 +0200
+@@ -173,7 +173,7 @@ void mt76_connac_write_hw_txp(struct mt7
+ 
+ 	txp->msdu_id[0] = cpu_to_le16(id | MT_MSDU_ID_VALID);
+ 
+-	if (is_mt7663(dev) || is_connac2(dev) || is_mt7925(dev))
++	if (is_mt7663(dev) || is_connac2(dev) || is_connac3(dev))
+ 		last_mask = MT_TXD_LEN_LAST;
+ 	else
+ 		last_mask = MT_TXD_LEN_AMSDU_LAST |
+@@ -217,7 +217,7 @@ mt76_connac_txp_skb_unmap_hw(struct mt76
+ 	u32 last_mask;
+ 	int i;
+ 
+-	if (is_mt7663(dev) || is_connac2(dev) || is_mt7925(dev))
++	if (is_mt7663(dev) || is_connac2(dev) || is_connac3(dev))
+ 		last_mask = MT_TXD_LEN_LAST;
+ 	else
+ 		last_mask = MT_TXD_LEN_MSDU_LAST;
+@@ -275,6 +275,15 @@ int mt76_connac_init_tx_queues(struct mt
+ }
+ EXPORT_SYMBOL_GPL(mt76_connac_init_tx_queues);
+ 
++void mt76_connac_set_txpower_cur(struct mt76_phy *phy, s8 max_power)
++{
++	int delta;
++
++	delta = mt76_tx_power_path_delta(hweight16(phy->chainmask));
++	phy->txpower_cur = max_power - delta;
++}
++EXPORT_SYMBOL_GPL(mt76_connac_set_txpower_cur);
++
+ #define __bitrate_mask_check(_mcs, _mode)				\
+ ({									\
+ 	u8 i = 0;							\
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.c	2026-07-06 18:41:22.256163896 +0200
+@@ -67,7 +67,7 @@ int mt76_connac_mcu_init_download(struct
+ 
+ 	if ((!is_connac_v1(dev) && addr == MCU_PATCH_ADDRESS) ||
+ 	    (is_connac2(dev) && addr == 0x900000) ||
+-	    (is_mt7925(dev) && (addr == 0x900000 || addr == 0xe0002800)) ||
++	    (is_connac3(dev) && (addr == 0x900000 || addr == 0xe0002800)) ||
+ 	    (is_mt799x(dev) && addr == 0x900000))
+ 		cmd = MCU_CMD(PATCH_START_REQ);
+ 	else
+@@ -1227,6 +1227,9 @@ int mt76_connac_mcu_uni_add_dev(struct m
+ 	len = enable ? sizeof(dev_req) : sizeof(basic_req);
+ 
+ 	err = mt76_mcu_send_msg(dev, cmd, data, len, true);
++	if (err && cmd == MCU_UNI_CMD(BSS_INFO_UPDATE))
++		err = mt76_connac_mcu_bss_deact_err(dev, err, enable);
++
+ 	if (err < 0)
+ 		return err;
+ 
+@@ -1234,7 +1237,11 @@ int mt76_connac_mcu_uni_add_dev(struct m
+ 	data = enable ? (void *)&basic_req : (void *)&dev_req;
+ 	len = enable ? sizeof(basic_req) : sizeof(dev_req);
+ 
+-	return mt76_mcu_send_msg(dev, cmd, data, len, true);
++	err = mt76_mcu_send_msg(dev, cmd, data, len, true);
++	if (err && cmd == MCU_UNI_CMD(BSS_INFO_UPDATE))
++		err = mt76_connac_mcu_bss_deact_err(dev, err, enable);
++
++	return err;
+ }
+ EXPORT_SYMBOL_GPL(mt76_connac_mcu_uni_add_dev);
+ 
+@@ -2223,14 +2230,14 @@ mt76_connac_mcu_rate_txpower_band(struct
+ 				.hw_value = ch_list[idx],
+ 				.band = band,
+ 			};
+-			s8 reg_power, sar_power;
++			s8 max_power;
+ 
+-			reg_power = mt76_connac_get_ch_power(phy, &chan,
+-							     tx_power);
+-			sar_power = mt76_get_sar_power(phy, &chan, reg_power);
+-
+-			mt76_get_rate_power_limits(phy, &chan, limits,
+-						   sar_power);
++			max_power = mt76_connac_get_rate_power_limit(phy, &chan,
++								     limits);
++			if (phy->chandef.chan &&
++			    phy->chandef.chan->hw_value == ch_list[idx] &&
++			    phy->chandef.chan->band == band)
++				mt76_connac_set_txpower_cur(phy, max_power);
+ 
+ 			tx_power_tlv.last_msg = ch_list[idx] == last_ch;
+ 			sku_tlbv.channel = ch_list[idx];
+@@ -2962,6 +2969,23 @@ int mt76_connac_mcu_rdd_cmd(struct mt76_
+ }
+ EXPORT_SYMBOL_GPL(mt76_connac_mcu_rdd_cmd);
+ 
++s8 mt76_connac_get_rate_power_limit(struct mt76_phy *phy,
++				    struct ieee80211_channel *chan,
++				    struct mt76_power_limits *limits)
++{
++	s8 reg_power, sar_power;
++	int tx_power;
++
++	tx_power = 2 * phy->hw->conf.power_level;
++	if (!tx_power)
++		tx_power = 127;
++
++	reg_power = mt76_connac_get_ch_power(phy, chan, tx_power);
++	sar_power = mt76_get_sar_power(phy, chan, reg_power);
++	return mt76_get_rate_power_limits(phy, chan, limits, sar_power);
++}
++EXPORT_SYMBOL_GPL(mt76_connac_get_rate_power_limit);
++
+ static int
+ mt76_connac_mcu_send_ram_firmware(struct mt76_dev *dev,
+ 				  const struct mt76_connac2_fw_trailer *hdr,
+@@ -3084,7 +3108,7 @@ static u32 mt76_connac2_get_data_mode(st
+ {
+ 	u32 mode = DL_MODE_NEED_RSP;
+ 
+-	if ((!is_connac2(dev) && !is_mt7925(dev)) || info == PATCH_SEC_NOT_SUPPORT)
++	if ((!is_connac2(dev) && !is_connac3(dev)) || info == PATCH_SEC_NOT_SUPPORT)
+ 		return mode;
+ 
+ 	switch (FIELD_GET(PATCH_SEC_ENC_TYPE_MASK, info)) {
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.h linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.h
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.h	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt76_connac_mcu.h	2026-07-06 18:41:22.245314779 +0200
+@@ -1069,6 +1069,7 @@ enum {
+ 	MCU_UNI_EVENT_SCAN_DONE = 0x0e,
+ 	MCU_UNI_EVENT_RDD_REPORT = 0x11,
+ 	MCU_UNI_EVENT_ROC = 0x27,
++	MCU_UNI_EVENT_MBMC = 0x28,
+ 	MCU_UNI_EVENT_TX_DONE = 0x2d,
+ 	MCU_UNI_EVENT_THERMAL = 0x35,
+ 	MCU_UNI_EVENT_RSSI_MONITOR = 0x41,
+@@ -1878,7 +1879,7 @@ mt76_connac_mcu_gen_dl_mode(struct mt76_
+ 
+ 	ret |= feature_set & FW_FEATURE_SET_ENCRYPT ?
+ 	       DL_MODE_ENCRYPT | DL_MODE_RESET_SEC_IV : 0;
+-	if (is_connac2(dev) || is_mt7925(dev))
++	if (is_connac2(dev) || is_connac3(dev))
+ 		ret |= feature_set & FW_FEATURE_ENCRY_MODE ?
+ 		       DL_CONFIG_ENCRY_MODE_SEL : 0;
+ 	ret |= FIELD_PREP(DL_MODE_KEY_IDX,
+@@ -1906,6 +1907,29 @@ mt76_connac_mcu_get_wlan_idx(struct mt76
+ 	}
+ }
+ 
++#define MT76_CONNAC_MCU_STATUS_WLAN_FAILURE	0xc0000001
++
++static inline int
++mt76_connac_mcu_bss_deact_err(struct mt76_dev *mdev, int err, bool enable)
++{
++	if (err != (int)MT76_CONNAC_MCU_STATUS_WLAN_FAILURE)
++		return err;
++
++	/* Ignore wlan_failure state false alarm when deactivating an
++	 * inactive network. It does not harm the firmware state.
++	 */
++	if (!enable) {
++		dev_dbg(mdev->dev,
++			"ignore wlan_failure when bss is deactivated\n");
++		return 0;
++	}
++
++	dev_warn(mdev->dev,
++		 "wlan_failure when bss is activated\n");
++
++	return err;
++}
++
+ struct sk_buff *
+ __mt76_connac_mcu_alloc_sta_req(struct mt76_dev *dev, struct mt76_vif_link *mvif,
+ 				struct mt76_wcid *wcid, int len);
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7921/main.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7921/main.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7921/main.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7921/main.c	2026-07-06 18:41:22.257690662 +0200
+@@ -1552,7 +1552,7 @@ const struct ieee80211_ops mt7921_ops =
+ 	.wake_tx_queue = mt76_wake_tx_queue,
+ 	.release_buffered_frames = mt76_release_buffered_frames,
+ 	.channel_switch_beacon = mt7921_channel_switch_beacon,
+-	.get_txpower = mt76_get_txpower,
++	.get_txpower = mt792x_get_txpower,
+ 	.get_stats = mt792x_get_stats,
+ 	.get_et_sset_count = mt792x_get_et_sset_count,
+ 	.get_et_strings = mt792x_get_et_strings,
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/init.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/init.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/init.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/init.c	2026-07-06 18:41:22.243202491 +0200
+@@ -117,6 +117,15 @@ static int __mt7925_init_hardware(struct
+ 	if (ret)
+ 		goto out;
+ 
++	if (is_mt7927(&dev->mt76)) {
++		ret = mt7925_mcu_set_dbdc(&dev->mphy, true);
++		if (ret) {
++			dev_warn(dev->mt76.dev,
++				 "MT7927 DBDC enable failed: %d\n", ret);
++			ret = 0;
++		}
++	}
++
+ out:
+ 	return ret;
+ }
+@@ -232,7 +241,8 @@ int mt7925_register_device(struct mt792x
+ 	dev->pm.idle_timeout = MT792x_PM_TIMEOUT;
+ 	dev->pm.stats.last_wake_event = jiffies;
+ 	dev->pm.stats.last_doze_event = jiffies;
+-	if (!mt76_is_usb(&dev->mt76)) {
++	/* MT7927: runtime PM crashes BT firmware on the shared CONNINFRA domain */
++	if (!mt76_is_usb(&dev->mt76) && !is_mt7927(&dev->mt76)) {
+ 		dev->pm.enable_user = true;
+ 		dev->pm.enable = true;
+ 		dev->pm.ds_enable_user = true;
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mac.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mac.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mac.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mac.c	2026-07-06 18:41:22.263196400 +0200
+@@ -339,6 +339,11 @@ mt7925_mac_fill_rx_rate(struct mt792x_de
+ 	case IEEE80211_STA_RX_BW_160:
+ 		status->bw = RATE_INFO_BW_160;
+ 		break;
++	/* RXV can report 320 in two positions */
++	case IEEE80211_STA_RX_BW_320:
++	case IEEE80211_STA_RX_BW_320 + 1:
++		status->bw = RATE_INFO_BW_320;
++		break;
+ 	default:
+ 		return -EINVAL;
+ 	}
+@@ -997,6 +1001,10 @@ mt7925_mac_add_txs_skb(struct mt792x_dev
+ 	stats->tx_mode[mode]++;
+ 
+ 	switch (FIELD_GET(MT_TXS0_BW, txs)) {
++	case IEEE80211_STA_RX_BW_320:
++		rate.bw = RATE_INFO_BW_320;
++		stats->tx_bw[4]++;
++		break;
+ 	case IEEE80211_STA_RX_BW_160:
+ 		rate.bw = RATE_INFO_BW_160;
+ 		stats->tx_bw[3]++;
+@@ -1083,6 +1091,17 @@ void mt7925_txwi_free(struct mt792x_dev
+ 		wcid_idx = wcid->idx;
+ 	} else {
+ 		wcid_idx = le32_get_bits(txwi[1], MT_TXD1_WLAN_IDX);
++		wcid = __mt76_wcid_ptr(mdev, wcid_idx);
++
++		if (wcid && wcid->sta) {
++			sta = container_of((void *)wcid,
++					   struct ieee80211_sta,
++					   drv_priv);
++			pr_info_ratelimited("mt7925 txwi_free: fallback sta=%pM wcid_idx=%u\n",
++					    sta->addr, wcid_idx);
++			if (likely(t->skb->protocol != cpu_to_be16(ETH_P_PAE)))
++				mt7925_tx_check_aggr(sta, t->skb, wcid);
++		}
+ 	}
+ 
+ 	__mt76_tx_complete_skb(mdev, wcid_idx, t->skb, free_list);
+@@ -1131,8 +1150,11 @@ mt7925_mac_tx_free(struct mt792x_dev *de
+ 			idx = FIELD_GET(MT_TXFREE_INFO_WLAN_ID, info);
+ 			wcid = mt76_wcid_ptr(dev, idx);
+ 			sta = wcid_to_sta(wcid);
+-			if (!sta)
++			if (!sta) {
++				pr_info_ratelimited("mt7925 txfree: wcid_idx=%u sta=NULL wcid_sta=%d\n",
++						    idx, wcid ? wcid->sta : -1);
+ 				continue;
++			}
+ 
+ 			mlink = container_of(wcid, struct mt792x_link_sta, wcid);
+ 			mt76_wcid_add_poll(&dev->mt76, &mlink->wcid);
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/main.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/main.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/main.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/main.c	2026-07-06 18:41:22.259896768 +0200
+@@ -62,12 +62,25 @@ mt7925_init_he_caps(struct mt792x_phy *p
+ 			IEEE80211_HE_MAC_CAP4_BQR;
+ 		he_cap_elem->mac_cap_info[5] |=
+ 			IEEE80211_HE_MAC_CAP5_OM_CTRL_UL_MU_DATA_DIS_RX;
++		he_cap_elem->phy_cap_info[1] |=
++			IEEE80211_HE_PHY_CAP1_DEVICE_CLASS_A |
++			IEEE80211_HE_PHY_CAP1_HE_LTF_AND_GI_FOR_HE_PPDUS_0_8US;
+ 		he_cap_elem->phy_cap_info[3] |=
+ 			IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_QPSK |
+ 			IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_QPSK;
++		he_cap_elem->phy_cap_info[4] |=
++			IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
++			IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_4 |
++			IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_ABOVE_80MHZ_4;
+ 		he_cap_elem->phy_cap_info[6] |=
+ 			IEEE80211_HE_PHY_CAP6_PARTIAL_BW_EXT_RANGE |
+ 			IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT;
++		he_cap_elem->phy_cap_info[7] |=
++			IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_SUPP |
++			IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI;
++		he_cap_elem->phy_cap_info[8] |=
++			IEEE80211_HE_PHY_CAP8_20MHZ_IN_40MHZ_HE_PPDU_IN_2G |
++			IEEE80211_HE_PHY_CAP8_80MHZ_IN_160MHZ_HE_PPDU;
+ 		he_cap_elem->phy_cap_info[9] |=
+ 			IEEE80211_HE_PHY_CAP9_TX_1024_QAM_LESS_THAN_242_TONE_RU |
+ 			IEEE80211_HE_PHY_CAP9_RX_1024_QAM_LESS_THAN_242_TONE_RU;
+@@ -183,6 +196,10 @@ mt7925_init_eht_caps(struct mt792x_phy *
+ 		IEEE80211_EHT_PHY_CAP0_SU_BEAMFORMER |
+ 		IEEE80211_EHT_PHY_CAP0_SU_BEAMFORMEE;
+ 
++	if (band == NL80211_BAND_6GHZ && is_320mhz_supported(&phy->dev->mt76))
++		eht_cap_elem->phy_cap_info[0] |=
++			IEEE80211_EHT_PHY_CAP0_320MHZ_IN_6GHZ;
++
+ 	eht_cap_elem->phy_cap_info[0] |=
+ 		u8_encode_bits(u8_get_bits(sts - 1, BIT(0)),
+ 			       IEEE80211_EHT_PHY_CAP0_BEAMFORMEE_SS_80MHZ_MASK);
+@@ -193,10 +210,20 @@ mt7925_init_eht_caps(struct mt792x_phy *
+ 		u8_encode_bits(sts - 1,
+ 			       IEEE80211_EHT_PHY_CAP1_BEAMFORMEE_SS_160MHZ_MASK);
+ 
++	if (band == NL80211_BAND_6GHZ && is_320mhz_supported(&phy->dev->mt76))
++		eht_cap_elem->phy_cap_info[1] |=
++			u8_encode_bits(sts - 1,
++				       IEEE80211_EHT_PHY_CAP1_BEAMFORMEE_SS_320MHZ_MASK);
++
+ 	eht_cap_elem->phy_cap_info[2] =
+ 		u8_encode_bits(sts - 1, IEEE80211_EHT_PHY_CAP2_SOUNDING_DIM_80MHZ_MASK) |
+ 		u8_encode_bits(sts - 1, IEEE80211_EHT_PHY_CAP2_SOUNDING_DIM_160MHZ_MASK);
+ 
++	if (band == NL80211_BAND_6GHZ && is_320mhz_supported(&phy->dev->mt76))
++		eht_cap_elem->phy_cap_info[2] |=
++			u8_encode_bits(sts - 1,
++				       IEEE80211_EHT_PHY_CAP2_SOUNDING_DIM_320MHZ_MASK);
++
+ 	eht_cap_elem->phy_cap_info[3] =
+ 		IEEE80211_EHT_PHY_CAP3_NG_16_SU_FEEDBACK |
+ 		IEEE80211_EHT_PHY_CAP3_NG_16_MU_FEEDBACK |
+@@ -217,7 +244,8 @@ mt7925_init_eht_caps(struct mt792x_phy *
+ 		u8_encode_bits(u8_get_bits(0x11, GENMASK(1, 0)),
+ 			       IEEE80211_EHT_PHY_CAP5_MAX_NUM_SUPP_EHT_LTF_MASK);
+ 
+-	val = width == NL80211_CHAN_WIDTH_160 ? 0x7 :
++	val = width == NL80211_CHAN_WIDTH_320 ? 0xf :
++	      width == NL80211_CHAN_WIDTH_160 ? 0x7 :
+ 	      width == NL80211_CHAN_WIDTH_80 ? 0x3 : 0x1;
+ 	eht_cap_elem->phy_cap_info[6] =
+ 		u8_encode_bits(u8_get_bits(0x11, GENMASK(4, 2)),
+@@ -239,6 +267,11 @@ mt7925_init_eht_caps(struct mt792x_phy *
+ 	eht_nss->bw._160.rx_tx_mcs9_max_nss = val;
+ 	eht_nss->bw._160.rx_tx_mcs11_max_nss = val;
+ 	eht_nss->bw._160.rx_tx_mcs13_max_nss = val;
++	if (band == NL80211_BAND_6GHZ && is_320mhz_supported(&phy->dev->mt76)) {
++		eht_nss->bw._320.rx_tx_mcs9_max_nss = val;
++		eht_nss->bw._320.rx_tx_mcs11_max_nss = val;
++		eht_nss->bw._320.rx_tx_mcs13_max_nss = val;
++	}
+ }
+ 
+ int mt7925_init_mlo_caps(struct mt792x_phy *phy)
+@@ -376,6 +409,18 @@ static int mt7925_mac_link_bss_add(struc
+ 	mconf->mt76.omac_idx = ieee80211_vif_is_mld(vif) ?
+ 			       0 : mconf->mt76.idx;
+ 	mconf->mt76.band_idx = 0xff;
++
++	if (is_mt7927(&dev->mt76)) {
++		struct ieee80211_channel *chan;
++
++		if (link_conf->chanreq.oper.chan)
++			chan = link_conf->chanreq.oper.chan;
++		else
++			chan = mvif->phy->mt76->chandef.chan;
++
++		mconf->mt76.band_idx = mt7927_band_idx(chan->band);
++	}
++
+ 	mconf->mt76.wmm_idx = ieee80211_vif_is_mld(vif) ?
+ 			      0 : mconf->mt76.idx % MT76_CONNAC_MAX_WMM_SETS;
+ 	mconf->mt76.link_idx = hweight16(mvif->valid_links);
+@@ -1321,14 +1366,14 @@ void mt7925_mac_sta_remove(struct mt76_d
+ 	struct mt792x_dev *dev = container_of(mdev, struct mt792x_dev, mt76);
+ 	struct mt792x_sta *msta = (struct mt792x_sta *)sta->drv_priv;
+ 	struct mt792x_vif *mvif = (struct mt792x_vif *)vif->drv_priv;
+-	unsigned long rem;
+-
+-	rem = ieee80211_vif_is_mld(vif) ? msta->valid_links : BIT(0);
+-
+-	mt7925_mac_sta_remove_links(dev, vif, sta, rem);
+ 
+-	if (ieee80211_vif_is_mld(vif))
++	if (ieee80211_vif_is_mld(vif)) {
++		mt7925_mac_sta_remove_links(dev, vif, sta, msta->valid_links);
+ 		mt7925_mcu_del_dev(mdev, vif);
++	} else {
++		mt7925_mac_link_sta_remove(mdev, vif, &sta->deflink,
++					   &msta->deflink);
++	}
+ 
+ 	if (vif->type == NL80211_IFTYPE_STATION) {
+ 		mvif->wep_sta = NULL;
+@@ -1375,22 +1420,22 @@ mt7925_ampdu_action(struct ieee80211_hw
+ 	case IEEE80211_AMPDU_RX_START:
+ 		mt76_rx_aggr_start(&dev->mt76, &msta->deflink.wcid, tid, ssn,
+ 				   params->buf_size);
+-		mt7925_mcu_uni_rx_ba(dev, params, true);
++		mt7925_mcu_uni_rx_ba(dev, params, vif, true);
+ 		break;
+ 	case IEEE80211_AMPDU_RX_STOP:
+ 		mt76_rx_aggr_stop(&dev->mt76, &msta->deflink.wcid, tid);
+-		mt7925_mcu_uni_rx_ba(dev, params, false);
++		mt7925_mcu_uni_rx_ba(dev, params, vif, false);
+ 		break;
+ 	case IEEE80211_AMPDU_TX_OPERATIONAL:
+ 		mtxq->aggr = true;
+ 		mtxq->send_bar = false;
+-		mt7925_mcu_uni_tx_ba(dev, params, true);
++		mt7925_mcu_uni_tx_ba(dev, params, vif, true);
+ 		break;
+ 	case IEEE80211_AMPDU_TX_STOP_FLUSH:
+ 	case IEEE80211_AMPDU_TX_STOP_FLUSH_CONT:
+ 		mtxq->aggr = false;
+ 		clear_bit(tid, &msta->deflink.wcid.ampdu_state);
+-		mt7925_mcu_uni_tx_ba(dev, params, false);
++		mt7925_mcu_uni_tx_ba(dev, params, vif, false);
+ 		break;
+ 	case IEEE80211_AMPDU_TX_START:
+ 		set_bit(tid, &msta->deflink.wcid.ampdu_state);
+@@ -1399,7 +1444,7 @@ mt7925_ampdu_action(struct ieee80211_hw
+ 	case IEEE80211_AMPDU_TX_STOP_CONT:
+ 		mtxq->aggr = false;
+ 		clear_bit(tid, &msta->deflink.wcid.ampdu_state);
+-		mt7925_mcu_uni_tx_ba(dev, params, false);
++		mt7925_mcu_uni_tx_ba(dev, params, vif, false);
+ 		ieee80211_stop_tx_ba_cb_irqsafe(vif, sta->addr, tid);
+ 		break;
+ 	}
+@@ -2221,6 +2266,29 @@ out:
+ 	return err;
+ }
+ 
++static int
++mt7927_reconfig_band(struct mt792x_dev *dev, struct ieee80211_vif *vif,
++		     struct ieee80211_bss_conf *link_conf,
++		     struct mt792x_bss_conf *mconf,
++		     u8 band_idx)
++{
++	struct mt792x_vif *mvif = (struct mt792x_vif *)vif->drv_priv;
++	struct mt792x_link_sta *mlink = &mvif->sta.deflink;
++	int ret;
++
++	ret = mt76_connac_mcu_uni_add_dev(&dev->mphy, link_conf,
++					  &mconf->mt76, &mlink->wcid,
++					  false);
++	if (ret)
++		return ret;
++
++	mconf->mt76.band_idx = band_idx;
++
++	return mt76_connac_mcu_uni_add_dev(&dev->mphy, link_conf,
++					   &mconf->mt76, &mlink->wcid,
++					   true);
++}
++
+ static int mt7925_assign_vif_chanctx(struct ieee80211_hw *hw,
+ 				     struct ieee80211_vif *vif,
+ 				     struct ieee80211_bss_conf *link_conf,
+@@ -2231,6 +2299,7 @@ static int mt7925_assign_vif_chanctx(str
+ 	struct mt792x_dev *dev = mt792x_hw_dev(hw);
+ 	struct ieee80211_bss_conf *pri_link_conf;
+ 	struct mt792x_bss_conf *mconf;
++	u8 band_idx;
+ 
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+@@ -2244,6 +2313,12 @@ static int mt7925_assign_vif_chanctx(str
+ 						NULL, true);
+ 	} else {
+ 		mconf = &mvif->bss_conf;
++
++		if (is_mt7927(&dev->mt76)) {
++			band_idx = mt7927_band_idx(ctx->def.chan->band);
++
++			mt7927_reconfig_band(dev, vif, link_conf, mconf, band_idx);
++		}
+ 	}
+ 
+ 	mconf->mt76.ctx = ctx;
+@@ -2436,7 +2511,7 @@ const struct ieee80211_ops mt7925_ops =
+ 	.wake_tx_queue = mt76_wake_tx_queue,
+ 	.release_buffered_frames = mt76_release_buffered_frames,
+ 	.channel_switch_beacon = mt7925_channel_switch_beacon,
+-	.get_txpower = mt76_get_txpower,
++	.get_txpower = mt792x_get_txpower,
+ 	.get_stats = mt792x_get_stats,
+ 	.get_et_sset_count = mt792x_get_et_sset_count,
+ 	.get_et_strings = mt792x_get_et_strings,
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mcu.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mcu.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mcu.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mcu.c	2026-07-06 18:41:22.262709947 +0200
+@@ -11,6 +11,9 @@
+ #define MT_STA_BFER			BIT(0)
+ #define MT_STA_BFEE			BIT(1)
+ 
++#define HE_PHY(p, c)			u8_get_bits(c, IEEE80211_HE_PHY_##p)
++#define HE_MAC(m, c)			u8_get_bits(c, IEEE80211_HE_MAC_##m)
++
+ int mt7925_mcu_parse_response(struct mt76_dev *mdev, int cmd,
+ 			      struct sk_buff *skb, int seq)
+ {
+@@ -567,6 +570,34 @@ mt7925_mcu_uni_debug_msg_event(struct mt
+ }
+ 
+ static void
++mt7925_mcu_handle_mbmc_event(struct mt792x_dev *dev, struct sk_buff *skb)
++{
++	struct mbmc_conf_tlv *tlv;
++	u32 tlv_len;
++
++	skb_pull(skb, sizeof(struct mt7925_mcu_rxd) + 4);
++	tlv_len = skb->len;
++	tlv = (struct mbmc_conf_tlv *)skb->data;
++
++	while (tlv_len >= sizeof(*tlv) &&
++	       le16_to_cpu(tlv->len) >= sizeof(*tlv) &&
++	       le16_to_cpu(tlv->len) <= tlv_len) {
++		u16 tag = le16_to_cpu(tlv->tag);
++
++		if (tag == UNI_MBMC_SETTING || tag == UNI_MBMC_NO_RESP_SETTING) {
++			dev_dbg(dev->mt76.dev,
++				"MBMC event: tag=%u mbmc_en=%u\n",
++				tag, tlv->mbmc_en);
++			break;
++		}
++
++		tlv_len -= le16_to_cpu(tlv->len);
++		tlv = (struct mbmc_conf_tlv *)
++			((u8 *)tlv + le16_to_cpu(tlv->len));
++	}
++}
++
++static void
+ mt7925_mcu_uni_rx_unsolicited_event(struct mt792x_dev *dev,
+ 				    struct sk_buff *skb)
+ {
+@@ -584,6 +615,9 @@ mt7925_mcu_uni_rx_unsolicited_event(stru
+ 	case MCU_UNI_EVENT_ROC:
+ 		mt7925_mcu_uni_roc_event(dev, skb);
+ 		break;
++	case MCU_UNI_EVENT_MBMC:
++		mt7925_mcu_handle_mbmc_event(dev, skb);
++		break;
+ 	case MCU_UNI_EVENT_SCAN_DONE:
+ 		mt7925_mcu_scan_event(dev, skb);
+ 		return;
+@@ -624,9 +658,8 @@ void mt7925_mcu_rx_event(struct mt792x_d
+ static int
+ mt7925_mcu_sta_ba(struct mt76_dev *dev, struct mt76_vif_link *mvif,
+ 		  struct ieee80211_ampdu_params *params,
+-		  bool enable, bool tx)
++		  struct mt76_wcid *wcid, bool enable, bool tx)
+ {
+-	struct mt76_wcid *wcid = (struct mt76_wcid *)params->sta->drv_priv;
+ 	struct sta_rec_ba_uni *ba;
+ 	struct sk_buff *skb;
+ 	struct tlv *tlv;
+@@ -652,30 +685,69 @@ mt7925_mcu_sta_ba(struct mt76_dev *dev,
+ 				     MCU_UNI_CMD(STA_REC_UPDATE), true);
+ }
+ 
+-/** starec & wtbl **/
+ int mt7925_mcu_uni_tx_ba(struct mt792x_dev *dev,
+ 			 struct ieee80211_ampdu_params *params,
+-			 bool enable)
++			 struct ieee80211_vif *vif, bool enable)
+ {
+-	struct mt792x_sta *msta = (struct mt792x_sta *)params->sta->drv_priv;
+-	struct mt792x_vif *mvif = msta->vif;
++	struct ieee80211_sta *sta = params->sta;
++	struct mt792x_sta *msta = (struct mt792x_sta *)sta->drv_priv;
++	struct ieee80211_link_sta *link_sta;
++	unsigned int link_id;
+ 
+-	if (enable && !params->amsdu)
+-		msta->deflink.wcid.amsdu = false;
++	for_each_sta_active_link(vif, sta, link_sta, link_id) {
++		struct mt792x_link_sta *mlink;
++		struct mt792x_bss_conf *mconf;
++		int ret;
++
++		mlink = mt792x_sta_to_link(msta, link_id);
++		if (!mlink)
++			return -EINVAL;
++
++		mconf = mt792x_vif_to_link(msta->vif, link_id);
++		if (!mconf)
++			return -EINVAL;
++
++		if (enable && !params->amsdu)
++			mlink->wcid.amsdu = false;
++
++		ret = mt7925_mcu_sta_ba(&dev->mt76, &mconf->mt76, params,
++					&mlink->wcid, enable, true);
++		if (ret)
++			return ret;
++	}
+ 
+-	return mt7925_mcu_sta_ba(&dev->mt76, &mvif->bss_conf.mt76, params,
+-				 enable, true);
++	return 0;
+ }
+ 
+ int mt7925_mcu_uni_rx_ba(struct mt792x_dev *dev,
+ 			 struct ieee80211_ampdu_params *params,
+-			 bool enable)
++			 struct ieee80211_vif *vif, bool enable)
+ {
+-	struct mt792x_sta *msta = (struct mt792x_sta *)params->sta->drv_priv;
+-	struct mt792x_vif *mvif = msta->vif;
++	struct ieee80211_sta *sta = params->sta;
++	struct mt792x_sta *msta = (struct mt792x_sta *)sta->drv_priv;
++	struct ieee80211_link_sta *link_sta;
++	unsigned int link_id;
++
++	for_each_sta_active_link(vif, sta, link_sta, link_id) {
++		struct mt792x_link_sta *mlink;
++		struct mt792x_bss_conf *mconf;
++		int ret;
++
++		mlink = mt792x_sta_to_link(msta, link_id);
++		if (!mlink)
++			return -EINVAL;
+ 
+-	return mt7925_mcu_sta_ba(&dev->mt76, &mvif->bss_conf.mt76, params,
+-				 enable, false);
++		mconf = mt792x_vif_to_link(msta->vif, link_id);
++		if (!mconf)
++			return -EINVAL;
++
++		ret = mt7925_mcu_sta_ba(&dev->mt76, &mconf->mt76, params,
++					&mlink->wcid, enable, false);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
+ }
+ 
+ static int mt7925_mcu_read_eeprom(struct mt792x_dev *dev, u32 offset, u8 *val)
+@@ -1626,6 +1698,74 @@ mt7925_mcu_sta_he_tlv(struct sk_buff *sk
+ }
+ 
+ static void
++mt7925_mcu_sta_muru_tlv(struct sk_buff *skb,
++			struct ieee80211_bss_conf *link_conf,
++			struct ieee80211_link_sta *link_sta)
++{
++	struct ieee80211_he_cap_elem *elem = &link_sta->he_cap.he_cap_elem;
++	struct sta_rec_muru *muru;
++	struct tlv *tlv;
++
++	if (link_conf->vif->type != NL80211_IFTYPE_STATION &&
++	    link_conf->vif->type != NL80211_IFTYPE_AP)
++		return;
++
++	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_MURU, sizeof(*muru));
++
++	muru = (struct sta_rec_muru *)tlv;
++	muru->cfg.mimo_dl_en = link_conf->eht_mu_beamformer ||
++			       link_conf->he_mu_beamformer ||
++			       link_conf->vht_mu_beamformer ||
++			       link_conf->vht_mu_beamformee;
++	muru->cfg.ofdma_dl_en = true;
++
++	if (link_sta->vht_cap.vht_supported)
++		muru->mimo_dl.vht_mu_bfee =
++			!!(link_sta->vht_cap.cap & IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE);
++
++	if (!link_sta->he_cap.has_he)
++		return;
++
++	muru->mimo_dl.partial_bw_dl_mimo =
++		HE_PHY(CAP6_PARTIAL_BANDWIDTH_DL_MUMIMO, elem->phy_cap_info[6]);
++
++	muru->mimo_ul.full_ul_mimo =
++		HE_PHY(CAP2_UL_MU_FULL_MU_MIMO, elem->phy_cap_info[2]);
++	muru->mimo_ul.partial_ul_mimo =
++		HE_PHY(CAP2_UL_MU_PARTIAL_MU_MIMO, elem->phy_cap_info[2]);
++
++	muru->ofdma_dl.punc_pream_rx =
++		HE_PHY(CAP1_PREAMBLE_PUNC_RX_MASK, elem->phy_cap_info[1]);
++	muru->ofdma_dl.he_20m_in_40m_2g =
++		HE_PHY(CAP8_20MHZ_IN_40MHZ_HE_PPDU_IN_2G, elem->phy_cap_info[8]);
++	muru->ofdma_dl.he_20m_in_160m =
++		HE_PHY(CAP8_20MHZ_IN_160MHZ_HE_PPDU, elem->phy_cap_info[8]);
++	muru->ofdma_dl.he_80m_in_160m =
++		HE_PHY(CAP8_80MHZ_IN_160MHZ_HE_PPDU, elem->phy_cap_info[8]);
++
++	muru->ofdma_ul.t_frame_dur =
++		HE_MAC(CAP1_TF_MAC_PAD_DUR_MASK, elem->mac_cap_info[1]);
++	muru->ofdma_ul.mu_cascading =
++		HE_MAC(CAP2_MU_CASCADING, elem->mac_cap_info[2]);
++	muru->ofdma_ul.uo_ra =
++		HE_MAC(CAP3_OFDMA_RA, elem->mac_cap_info[3]);
++	muru->ofdma_ul.rx_ctrl_frame_to_mbss =
++		HE_MAC(CAP3_RX_CTRL_FRAME_TO_MULTIBSS, elem->mac_cap_info[3]);
++}
++
++static void
++mt7925_mcu_sta_tx_proc_tlv(struct sk_buff *skb)
++{
++	struct sta_rec_tx_proc *tx_proc;
++	struct tlv *tlv;
++
++	tlv = mt76_connac_mcu_add_tlv(skb, STA_REC_TX_PROC, sizeof(*tx_proc));
++
++	tx_proc = (struct sta_rec_tx_proc *)tlv;
++	tx_proc->flag = cpu_to_le32(0);
++}
++
++static void
+ mt7925_mcu_sta_he_6g_tlv(struct sk_buff *skb,
+ 			 struct ieee80211_link_sta *link_sta)
+ {
+@@ -1667,6 +1807,7 @@ mt7925_mcu_sta_eht_tlv(struct sk_buff *s
+ 		memcpy(eht->mcs_map_bw20, &mcs_map->only_20mhz, sizeof(eht->mcs_map_bw20));
+ 	memcpy(eht->mcs_map_bw80, &mcs_map->bw._80, sizeof(eht->mcs_map_bw80));
+ 	memcpy(eht->mcs_map_bw160, &mcs_map->bw._160, sizeof(eht->mcs_map_bw160));
++	memcpy(eht->mcs_map_bw320, &mcs_map->bw._320, sizeof(eht->mcs_map_bw320));
+ }
+ 
+ static void
+@@ -1985,6 +2126,8 @@ mt7925_mcu_sta_cmd(struct mt76_phy *phy,
+ 		mt76_connac_mcu_sta_uapsd(skb, info->vif, info->link_sta->sta);
+ 		mt7925_mcu_sta_amsdu_tlv(skb, info->vif, info->link_sta, mlink);
+ 		mt7925_mcu_sta_he_tlv(skb, info->link_sta);
++		mt7925_mcu_sta_muru_tlv(skb, info->link_conf,
++					info->link_sta);
+ 		mt7925_mcu_sta_he_6g_tlv(skb, info->link_sta);
+ 		mt7925_mcu_sta_eht_tlv(skb, info->link_sta);
+ 		mt7925_mcu_sta_rate_ctrl_tlv(skb, info->vif,
+@@ -2011,6 +2154,7 @@ mt7925_mcu_sta_cmd(struct mt76_phy *phy,
+ 			mlink = &mvif->sta.deflink;
+ 
+ 		mt7925_mcu_sta_hdr_trans_tlv(skb, info->vif, mlink);
++		mt7925_mcu_sta_tx_proc_tlv(skb);
+ 	}
+ 
+ 	return mt76_mcu_skb_send_msg(dev, skb, info->cmd, true);
+@@ -2334,6 +2478,10 @@ void mt7925_mcu_bss_rlm_tlv(struct sk_bu
+ 	case NL80211_CHAN_WIDTH_160:
+ 		req->bw = CMD_CBW_160MHZ;
+ 		break;
++	case NL80211_CHAN_WIDTH_320:
++		req->bw = CMD_CBW_320MHZ;
++		req->center_chan2 = ieee80211_frequency_to_channel(freq2);
++		break;
+ 	case NL80211_CHAN_WIDTH_5:
+ 		req->bw = CMD_CBW_5MHZ;
+ 		break;
+@@ -2827,6 +2975,7 @@ int mt7925_mcu_add_bss_info_sta(struct m
+ 	struct mt792x_bss_conf *mconf = mt792x_link_conf_to_mconf(link_conf);
+ 	struct mt792x_dev *dev = phy->dev;
+ 	struct sk_buff *skb;
++	int err;
+ 
+ 	skb = __mt7925_mcu_alloc_bss_req(&dev->mt76, &mconf->mt76,
+ 					 MT7925_BSS_UPDATE_MAX_SIZE);
+@@ -2852,8 +3001,9 @@ int mt7925_mcu_add_bss_info_sta(struct m
+ 		mt7925_mcu_bss_mbssid_tlv(skb, link_conf, enable);
+ 	}
+ 
+-	return mt76_mcu_skb_send_msg(&dev->mt76, skb,
+-				     MCU_UNI_CMD(BSS_INFO_UPDATE), true);
++	err = mt76_mcu_skb_send_msg(&dev->mt76, skb,
++				    MCU_UNI_CMD(BSS_INFO_UPDATE), true);
++	return mt76_connac_mcu_bss_deact_err(&dev->mt76, err, enable);
+ }
+ 
+ int mt7925_mcu_add_bss_info(struct mt792x_phy *phy,
+@@ -2911,6 +3061,7 @@ int mt7925_mcu_set_dbdc(struct mt76_phy
+ 
+ 	return err;
+ }
++EXPORT_SYMBOL_GPL(mt7925_mcu_set_dbdc);
+ 
+ static void
+ mt7925_mcu_build_scan_ie_tlv(struct mt76_dev *mdev,
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mcu.h linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mcu.h
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mcu.h	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mcu.h	2026-07-06 18:41:22.262820055 +0200
+@@ -143,7 +143,8 @@ enum {
+ };
+ 
+ enum {
+-	UNI_MBMC_SETTING,
++	UNI_MBMC_SETTING = 0,
++	UNI_MBMC_NO_RESP_SETTING = 1,
+ };
+ 
+ enum {
+@@ -520,6 +521,8 @@ struct bss_rlm_tlv {
+ 					 sizeof(struct sta_rec_eht) +		\
+ 					 sizeof(struct sta_rec_hdr_trans) +	\
+ 					 sizeof(struct sta_rec_mld) +		\
++					 sizeof(struct sta_rec_muru) +		\
++					 sizeof(struct sta_rec_tx_proc) +	\
+ 					 sizeof(struct tlv) * 2 +		\
+ 					 sizeof(struct sta_rec_remove))
+ 
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mt7925.h linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mt7925.h
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/mt7925.h	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/mt7925.h	2026-07-06 18:41:22.252781915 +0200
+@@ -126,6 +126,19 @@ enum mt7925_rxq_id {
+ 	MT7925_RXQ_MCU_WM2, /* for tx done */
+ };
+ 
++enum mt7927_txq_id {
++	MT7927_TXQ_BAND0 = MT7925_TXQ_BAND0,
++	MT7927_TXQ_BAND1 = MT7925_TXQ_BAND1,
++	MT7927_TXQ_MCU_WM = MT7925_TXQ_MCU_WM,
++	MT7927_TXQ_FWDL = MT7925_TXQ_FWDL,
++};
++
++enum mt7927_rxq_id {
++	MT7927_RXQ_BAND0 = 4,
++	MT7927_RXQ_MCU_WM = 6,
++	MT7927_RXQ_DATA2 = 7,
++};
++
+ enum {
+ 	MODE_OPEN = 0,
+ 	MODE_SHARED = 1,
+@@ -239,6 +252,18 @@ struct mt7925_txpwr {
+ 	s8 eht996x3_484[16][2];
+ };
+ 
++static inline u8 mt7927_band_idx(enum nl80211_band band)
++{
++	switch (band) {
++	case NL80211_BAND_2GHZ:
++		return 0;
++	case NL80211_BAND_5GHZ:
++	case NL80211_BAND_6GHZ:
++	default:
++		return 1;
++	}
++}
++
+ extern const struct ieee80211_ops mt7925_ops;
+ 
+ int __mt7925_start(struct mt792x_phy *phy);
+@@ -293,10 +318,10 @@ int mt7925_mcu_set_beacon_filter(struct
+ 				 bool enable);
+ int mt7925_mcu_uni_tx_ba(struct mt792x_dev *dev,
+ 			 struct ieee80211_ampdu_params *params,
+-			 bool enable);
++			 struct ieee80211_vif *vif, bool enable);
+ int mt7925_mcu_uni_rx_ba(struct mt792x_dev *dev,
+ 			 struct ieee80211_ampdu_params *params,
+-			 bool enable);
++			 struct ieee80211_vif *vif, bool enable);
+ void mt7925_mlo_pm_work(struct work_struct *work);
+ void mt7925_scan_work(struct work_struct *work);
+ void mt7925_roc_work(struct work_struct *work);
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/pci.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/pci.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/pci.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/pci.c	2026-07-06 18:41:22.248049982 +0200
+@@ -16,6 +16,12 @@ static const struct pci_device_id mt7925
+ 		.driver_data = (kernel_ulong_t)MT7925_FIRMWARE_WM },
+ 	{ PCI_DEVICE(PCI_VENDOR_ID_MEDIATEK, 0x0717),
+ 		.driver_data = (kernel_ulong_t)MT7925_FIRMWARE_WM },
++	{ PCI_DEVICE(PCI_VENDOR_ID_MEDIATEK, 0x7927),
++		.driver_data = (kernel_ulong_t)MT7927_FIRMWARE_WM },
++	{ PCI_DEVICE(PCI_VENDOR_ID_MEDIATEK, 0x6639),
++		.driver_data = (kernel_ulong_t)MT7927_FIRMWARE_WM },
++	{ PCI_DEVICE(PCI_VENDOR_ID_MEDIATEK, 0x0738),
++		.driver_data = (kernel_ulong_t)MT7927_FIRMWARE_WM },
+ 	{ },
+ };
+ 
+@@ -210,48 +216,74 @@ static u32 mt7925_rmw(struct mt76_dev *m
+ 	return dev->bus_ops->rmw(mdev, addr, mask, val);
+ }
+ 
+-static int mt7925_dma_init(struct mt792x_dev *dev)
++static const struct mt792x_dma_layout mt7925_dma_layout = {
++	.tx_data0 = mt792x_dma_ring(MT7925_TXQ_BAND0,
++				    MT7925_TX_RING_SIZE,
++				    MT_TX_RING_BASE),
++	.tx_mcu = mt792x_dma_ring(MT7925_TXQ_MCU_WM,
++				  MT7925_TX_MCU_RING_SIZE,
++				  MT_TX_RING_BASE),
++	.tx_fwdl = mt792x_dma_ring(MT7925_TXQ_FWDL,
++				   MT7925_TX_FWDL_RING_SIZE,
++				   MT_TX_RING_BASE),
++	.rx_mcu = mt792x_dma_ring(MT7925_RXQ_MCU_WM,
++				  MT7925_RX_MCU_RING_SIZE,
++				  MT_RX_EVENT_RING_BASE),
++	.rx_data = mt792x_dma_ring(MT7925_RXQ_BAND0,
++				   MT7925_RX_RING_SIZE,
++				   MT_RX_DATA_RING_BASE),
++};
++
++static const struct mt792x_dma_layout mt7927_dma_layout = {
++	.tx_data0 = mt792x_dma_ring(MT7927_TXQ_BAND0,
++				    MT7925_TX_RING_SIZE,
++				    MT_TX_RING_BASE),
++	.tx_mcu = mt792x_dma_ring(MT7927_TXQ_MCU_WM,
++				  MT7925_TX_MCU_RING_SIZE,
++				  MT_TX_RING_BASE),
++	.tx_fwdl = mt792x_dma_ring(MT7927_TXQ_FWDL,
++				   MT7925_TX_FWDL_RING_SIZE,
++				   MT_TX_RING_BASE),
++	.rx_mcu = mt792x_dma_ring(MT7927_RXQ_MCU_WM,
++				  MT7925_RX_MCU_RING_SIZE,
++				  MT_RX_EVENT_RING_BASE),
++	.rx_data = mt792x_dma_ring(MT7927_RXQ_BAND0,
++				   MT7925_RX_RING_SIZE,
++				   MT_RX_DATA_RING_BASE),
++};
++
++static int mt7927_dma_init(struct mt792x_dev *dev)
+ {
+ 	int ret;
+ 
+-	mt76_dma_attach(&dev->mt76);
+-
+-	ret = mt792x_dma_disable(dev, true);
++	ret = mt792x_dma_alloc_queues(dev, &mt7927_dma_layout);
+ 	if (ret)
+ 		return ret;
+ 
+-	/* init tx queue */
+-	ret = mt76_connac_init_tx_queues(dev->phy.mt76, MT7925_TXQ_BAND0,
+-					 MT7925_TX_RING_SIZE,
+-					 MT_TX_RING_BASE, NULL, 0);
++	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MCU_WA],
++			       MT7927_RXQ_DATA2,
++			       MT7925_RX_MCU_RING_SIZE,
++			       MT_RX_BUF_SIZE,
++			       MT_RX_DATA_RING_BASE);
+ 	if (ret)
+ 		return ret;
+ 
+-	mt76_wr(dev, MT_WFDMA0_TX_RING0_EXT_CTRL, 0x4);
+-
+-	/* command to WM */
+-	ret = mt76_init_mcu_queue(&dev->mt76, MT_MCUQ_WM, MT7925_TXQ_MCU_WM,
+-				  MT7925_TX_MCU_RING_SIZE, MT_TX_RING_BASE);
+-	if (ret)
++	ret = mt76_init_queues(dev, mt792x_poll_rx);
++	if (ret < 0)
+ 		return ret;
+ 
+-	/* firmware download */
+-	ret = mt76_init_mcu_queue(&dev->mt76, MT_MCUQ_FWDL, MT7925_TXQ_FWDL,
+-				  MT7925_TX_FWDL_RING_SIZE, MT_TX_RING_BASE);
+-	if (ret)
+-		return ret;
++	netif_napi_add_tx(dev->mt76.tx_napi_dev, &dev->mt76.tx_napi,
++			  mt792x_poll_tx);
++	napi_enable(&dev->mt76.tx_napi);
+ 
+-	/* rx event */
+-	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MCU],
+-			       MT7925_RXQ_MCU_WM, MT7925_RX_MCU_RING_SIZE,
+-			       MT_RX_BUF_SIZE, MT_RX_EVENT_RING_BASE);
+-	if (ret)
+-		return ret;
++	return mt792x_dma_enable(dev);
++}
++
++static int mt7925_dma_init(struct mt792x_dev *dev)
++{
++	int ret;
+ 
+-	/* rx data */
+-	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MAIN],
+-			       MT7925_RXQ_BAND0, MT7925_RX_RING_SIZE,
+-			       MT_RX_BUF_SIZE, MT_RX_DATA_RING_BASE);
++	ret = mt792x_dma_alloc_queues(dev, &mt7925_dma_layout);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -266,6 +298,18 @@ static int mt7925_dma_init(struct mt792x
+ 	return mt792x_dma_enable(dev);
+ }
+ 
++static const struct mt792x_irq_map mt7927_irq_map = {
++	.host_irq_enable = MT_WFDMA0_HOST_INT_ENA,
++	.tx = {
++		.all_complete_mask = MT_INT_TX_DONE_ALL,
++		.mcu_complete_mask = MT_INT_TX_DONE_MCU,
++	},
++	.rx = {
++		.data_complete_mask = MT7927_RX_DONE_INT_ENA4,
++		.wm_complete_mask = MT7927_RX_DONE_INT_ENA6,
++		.wm2_complete_mask = MT7927_RX_DONE_INT_ENA7,
++	},
++};
+ static int mt7925_pci_probe(struct pci_dev *pdev,
+ 			    const struct pci_device_id *id)
+ {
+@@ -310,6 +354,7 @@ static int mt7925_pci_probe(struct pci_d
+ 	struct mt76_bus_ops *bus_ops;
+ 	struct mt792x_dev *dev;
+ 	struct mt76_dev *mdev;
++	bool is_mt7927_hw;
+ 	u8 features;
+ 	int ret;
+ 	u16 cmd;
+@@ -337,7 +382,11 @@ static int mt7925_pci_probe(struct pci_d
+ 	if (ret)
+ 		goto err_free_pci_vec;
+ 
+-	if (mt7925_disable_aspm)
++	is_mt7927_hw = (pdev->device == 0x6639 || pdev->device == 0x7927 ||
++			pdev->device == 0x0738);
++
++	/* MT7927: ASPM L1 causes unreliable WFDMA register access */
++	if (mt7925_disable_aspm || is_mt7927_hw)
+ 		mt76_pci_disable_aspm(pdev);
+ 
+ 	ops = mt792x_get_mac80211_ops(&pdev->dev, &mt7925_ops,
+@@ -358,7 +407,7 @@ static int mt7925_pci_probe(struct pci_d
+ 	dev = container_of(mdev, struct mt792x_dev, mt76);
+ 	dev->fw_features = features;
+ 	dev->hif_ops = &mt7925_pcie_ops;
+-	dev->irq_map = &irq_map;
++	dev->irq_map = is_mt7927_hw ? &mt7927_irq_map : &irq_map;
+ 	mt76_mmio_init(&dev->mt76, pcim_iomap_table(pdev)[0]);
+ 	tasklet_init(&mdev->irq_tasklet, mt792x_irq_tasklet, (unsigned long)dev);
+ 
+@@ -394,6 +443,13 @@ static int mt7925_pci_probe(struct pci_d
+ 
+ 	dev_info(mdev->dev, "ASIC revision: %04x\n", mdev->rev);
+ 
++	if (is_mt7927_hw && mt76_chip(mdev) != 0x7927) {
++		dev_info(mdev->dev,
++			 "MT7927 raw CHIPID=0x%04x, forcing chip=0x7927\n",
++			 mt76_chip(mdev));
++		mdev->rev = (0x7927 << 16) | (mdev->rev & 0xff);
++	}
++
+ 	mt76_rmw_field(dev, MT_HW_EMI_CTL, MT_HW_EMI_CTL_SLPPROT_EN, 1);
+ 
+ 	ret = mt792x_wfsys_reset(dev);
+@@ -409,6 +465,12 @@ static int mt7925_pci_probe(struct pci_d
+ 	if (ret)
+ 		goto err_free_dev;
+ 
+-	ret = mt7925_dma_init(dev);
++	if (is_mt7927(&dev->mt76))
++		ret = mt7927_dma_init(dev);
++	else if (is_mt7925(&dev->mt76))
++		ret = mt7925_dma_init(dev);
++	else
++		ret = -EINVAL;
++
+ 	if (ret)
+ 		goto err_free_irq;
+@@ -549,7 +613,10 @@ static int _mt7925_pci_resume(struct dev
+ 	mt76_wr(dev, MT_PCIE_MAC_INT_ENABLE, 0xff);
+ 	mt76_connac_irq_enable(&dev->mt76,
+ 			       dev->irq_map->tx.all_complete_mask |
+-			       MT_INT_RX_DONE_ALL | MT_INT_MCU_CMD);
++			       dev->irq_map->rx.data_complete_mask |
++			       dev->irq_map->rx.wm_complete_mask |
++			       dev->irq_map->rx.wm2_complete_mask |
++			       MT_INT_MCU_CMD);
+ 	mt76_set(dev, MT_MCU2HOST_SW_INT_ENA, MT_MCU_CMD_WAKE_RX_PCIE);
+ 
+ 	/* put dma enabled */
+@@ -633,6 +700,8 @@ module_pci_driver(mt7925_pci_driver);
+ MODULE_DEVICE_TABLE(pci, mt7925_pci_device_table);
+ MODULE_FIRMWARE(MT7925_FIRMWARE_WM);
+ MODULE_FIRMWARE(MT7925_ROM_PATCH);
++MODULE_FIRMWARE(MT7927_FIRMWARE_WM);
++MODULE_FIRMWARE(MT7927_ROM_PATCH);
+ MODULE_AUTHOR("Deren Wu <deren.wu@mediatek.com>");
+ MODULE_AUTHOR("Lorenzo Bianconi <lorenzo@kernel.org>");
+ MODULE_DESCRIPTION("MediaTek MT7925E (PCIe) wireless driver");
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/pci_mac.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/pci_mac.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/pci_mac.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/pci_mac.c	2026-07-06 18:41:22.243659381 +0200
+@@ -3,6 +3,7 @@
+ 
+ #include "mt7925.h"
+ #include "../dma.h"
++#include "mcu.h"
+ #include "mac.h"
+ 
+ int mt7925e_tx_prepare_skb(struct mt76_dev *mdev, void *txwi_ptr,
+@@ -118,7 +119,10 @@ int mt7925e_mac_reset(struct mt792x_dev
+ 
+ 	mt76_wr(dev, dev->irq_map->host_irq_enable,
+ 		dev->irq_map->tx.all_complete_mask |
+-		MT_INT_RX_DONE_ALL | MT_INT_MCU_CMD);
++		dev->irq_map->rx.data_complete_mask |
++		dev->irq_map->rx.wm_complete_mask |
++		dev->irq_map->rx.wm2_complete_mask |
++		MT_INT_MCU_CMD);
+ 	mt76_wr(dev, MT_PCIE_MAC_INT_ENABLE, 0xff);
+ 
+ 	err = mt792xe_mcu_fw_pmctrl(dev);
+@@ -141,6 +145,12 @@ int mt7925e_mac_reset(struct mt792x_dev
+ 	if (err)
+ 		goto out;
+ 
++	if (is_mt7927(&dev->mt76)) {
++		err = mt7925_mcu_set_dbdc(&dev->mphy, true);
++		if (err)
++			goto out;
++	}
++
+ 	err = __mt7925_start(&dev->phy);
+ out:
+ 	clear_bit(MT76_RESET, &dev->mphy.state);
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/usb.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/usb.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt7925/usb.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt7925/usb.c	2026-07-06 18:41:22.248924199 +0200
+@@ -10,6 +10,8 @@
+ #include "mac.h"
+ 
+ static const struct usb_device_id mt7925u_device_table[] = {
++	{ USB_DEVICE_AND_INTERFACE_INFO(0x0e8d, 0x6639, 0xff, 0xff, 0xff),
++		.driver_info = (kernel_ulong_t)MT7925_FIRMWARE_WM },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(0x0e8d, 0x7925, 0xff, 0xff, 0xff),
+ 		.driver_info = (kernel_ulong_t)MT7925_FIRMWARE_WM },
+ 	/* Netgear, Inc. A9000 */
+@@ -120,6 +122,12 @@ static int mt7925u_mac_reset(struct mt79
+ 	if (err)
+ 		goto out;
+ 
++	if (is_mt7927(&dev->mt76)) {
++		err = mt7925_mcu_set_dbdc(&dev->mphy, true);
++		if (err)
++			goto out;
++	}
++
+ 	err = __mt7925_start(&dev->phy);
+ out:
+ 	clear_bit(MT76_RESET, &dev->mphy.state);
+@@ -198,6 +206,13 @@ static int mt7925u_probe(struct usb_inte
+ 		    (mt76_rr(dev, MT_HW_REV) & 0xff);
+ 	dev_dbg(mdev->dev, "ASIC revision: %04x\n", mdev->rev);
+ 
++	if (mt76_chip(mdev) == 0x6639) {
++		dev_dbg(mdev->dev,
++			"MT7927 raw CHIPID=0x%04x, forcing chip=0x7927\n",
++			mt76_chip(mdev));
++		mdev->rev = (0x7927 << 16) | (mdev->rev & 0xff);
++	}
++
+ 	if (mt76_get_field(dev, MT_CONN_ON_MISC, MT_TOP_MISC2_FW_N9_RDY)) {
+ 		ret = mt792xu_wfsys_reset(dev);
+ 		if (ret)
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_core.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_core.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_core.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_core.c	2026-07-06 18:41:22.258117146 +0200
+@@ -329,6 +329,47 @@ void mt792x_flush(struct ieee80211_hw *h
+ }
+ EXPORT_SYMBOL_GPL(mt792x_flush);
+ 
++int mt792x_get_txpower(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
++		       unsigned int link_id, int *dbm)
++{
++	struct mt76_power_limits limits = {};
++	struct ieee80211_bss_conf *link_conf;
++	struct ieee80211_channel *chan;
++	struct mt792x_bss_conf *mconf;
++	struct mt792x_vif *mvif;
++	struct mt76_phy *phy;
++	s8 max_power;
++
++	if (!vif)
++		return mt76_get_txpower(hw, vif, link_id, dbm);
++
++	mvif = (struct mt792x_vif *)vif->drv_priv;
++	phy = mvif->phy->mt76;
++
++	mt792x_mutex_acquire(mvif->phy->dev);
++
++	link_conf = mt792x_vif_to_bss_conf(vif, link_id);
++	mconf = link_conf ? mt792x_link_conf_to_mconf(link_conf) : NULL;
++	if (mconf && mconf->mt76.ctx && mconf->mt76.ctx->def.chan)
++		chan = mconf->mt76.ctx->def.chan;
++	else
++		/* Fall back to the current PHY chandef if the requested link
++		 * does not have a valid channel context.
++		 */
++		chan = phy->chandef.chan;
++
++	mt792x_mutex_release(mvif->phy->dev);
++
++	if (!chan)
++		return -EINVAL;
++
++	max_power = mt76_connac_get_rate_power_limit(phy, chan, &limits);
++	*dbm = DIV_ROUND_UP(max_power, 2);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(mt792x_get_txpower);
++
+ int mt792x_assign_vif_chanctx(struct ieee80211_hw *hw,
+ 			      struct ieee80211_vif *vif,
+ 			      struct ieee80211_bss_conf *link_conf,
+@@ -759,6 +800,13 @@ out:
+ 	return offload_caps;
+ }
+ 
++static bool mt792x_needs_cnm_runtime(const void *drv_data)
++{
++	const char *fw_wm = drv_data;
++
++	return fw_wm && !strcmp(fw_wm, MT7927_FIRMWARE_WM);
++}
++
+ struct ieee80211_ops *
+ mt792x_get_mac80211_ops(struct device *dev,
+ 			const struct ieee80211_ops *mac80211_ops,
+@@ -772,6 +820,10 @@ mt792x_get_mac80211_ops(struct device *d
+ 		return NULL;
+ 
+ 	*fw_features = mt792x_get_offload_capability(dev, drv_data);
++
++	if (mt792x_needs_cnm_runtime(drv_data))
++		*fw_features |= MT792x_FW_CAP_CNM;
++
+ 	if (!(*fw_features & MT792x_FW_CAP_CNM)) {
+ 		ops->remain_on_channel = NULL;
+ 		ops->cancel_remain_on_channel = NULL;
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_dma.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_dma.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_dma.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_dma.c	2026-07-06 18:41:22.242040372 +0200
+@@ -87,22 +87,122 @@ void mt792x_rx_poll_complete(struct mt76
+ }
+ EXPORT_SYMBOL_GPL(mt792x_rx_poll_complete);
+ 
++int mt792x_dma_alloc_queues(struct mt792x_dev *dev,
++			    const struct mt792x_dma_layout *layout)
++{
++	int ret;
++
++	mt76_dma_attach(&dev->mt76);
++
++	ret = mt792x_dma_disable(dev, true);
++	if (ret)
++		return ret;
++
++	/* init tx queue */
++	ret = mt76_connac_init_tx_queues(dev->phy.mt76, layout->tx_data0.qid,
++					 layout->tx_data0.n_desc,
++					 layout->tx_data0.ring_base,
++					 NULL, 0);
++	if (ret)
++		return ret;
++
++	mt76_wr(dev, MT_WFDMA0_TX_RING0_EXT_CTRL, 0x4);
++
++	/* command to WM */
++	ret = mt76_init_mcu_queue(&dev->mt76, MT_MCUQ_WM,
++				  layout->tx_mcu.qid,
++				  layout->tx_mcu.n_desc,
++				  layout->tx_mcu.ring_base);
++	if (ret)
++		return ret;
++
++	/* firmware download */
++	ret = mt76_init_mcu_queue(&dev->mt76, MT_MCUQ_FWDL,
++				  layout->tx_fwdl.qid,
++				  layout->tx_fwdl.n_desc,
++				  layout->tx_fwdl.ring_base);
++	if (ret)
++		return ret;
++
++	/* rx event */
++	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MCU],
++			       layout->rx_mcu.qid,
++			       layout->rx_mcu.n_desc,
++			       MT_RX_BUF_SIZE,
++			       layout->rx_mcu.ring_base);
++	if (ret)
++		return ret;
++
++	/* rx data */
++	ret = mt76_queue_alloc(dev, &dev->mt76.q_rx[MT_RXQ_MAIN],
++			       layout->rx_data.qid,
++			       layout->rx_data.n_desc,
++			       MT_RX_BUF_SIZE,
++			       layout->rx_data.ring_base);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(mt792x_dma_alloc_queues);
++
+ #define PREFETCH(base, depth)	((base) << 16 | (depth))
++
++static void mt7925_dma_prefetch_setup(struct mt792x_dev *dev)
++{
++	/* rx ring */
++	mt76_wr(dev, MT_WFDMA0_RX_RING0_EXT_CTRL, PREFETCH(0x0000, 0x4));
++	mt76_wr(dev, MT_WFDMA0_RX_RING1_EXT_CTRL, PREFETCH(0x0040, 0x4));
++	mt76_wr(dev, MT_WFDMA0_RX_RING2_EXT_CTRL, PREFETCH(0x0080, 0x4));
++	mt76_wr(dev, MT_WFDMA0_RX_RING3_EXT_CTRL, PREFETCH(0x00c0, 0x4));
++
++	/* tx ring */
++	mt76_wr(dev, MT_WFDMA0_TX_RING0_EXT_CTRL, PREFETCH(0x0100, 0x10));
++	mt76_wr(dev, MT_WFDMA0_TX_RING1_EXT_CTRL, PREFETCH(0x0200, 0x10));
++	mt76_wr(dev, MT_WFDMA0_TX_RING2_EXT_CTRL, PREFETCH(0x0300, 0x10));
++	mt76_wr(dev, MT_WFDMA0_TX_RING3_EXT_CTRL, PREFETCH(0x0400, 0x10));
++	mt76_wr(dev, MT_WFDMA0_TX_RING15_EXT_CTRL, PREFETCH(0x0500, 0x4));
++	mt76_wr(dev, MT_WFDMA0_TX_RING16_EXT_CTRL, PREFETCH(0x0540, 0x4));
++}
++
++static void mt7925_wfdma_setup(struct mt792x_dev *dev)
++{
++	mt76_rmw(dev, MT_UWFDMA0_GLO_CFG_EXT1, BIT(28), BIT(28));
++	mt76_set(dev, MT_WFDMA0_INT_RX_PRI, 0x0F00);
++	mt76_set(dev, MT_WFDMA0_INT_TX_PRI, 0x7F00);
++}
++
++static void mt7927_dma_prefetch_setup(struct mt792x_dev *dev)
++{
++	mt76_wr(dev, MT_WFDMA_PREFETCH_CTRL,
++		mt76_rr(dev, MT_WFDMA_PREFETCH_CTRL));
++	mt76_wr(dev, MT_WFDMA_PREFETCH_CFG0, 0x660077);
++	mt76_wr(dev, MT_WFDMA_PREFETCH_CFG1, 0x1100);
++	mt76_wr(dev, MT_WFDMA_PREFETCH_CFG2, 0x30004f);
++	mt76_wr(dev, MT_WFDMA_PREFETCH_CFG3, 0x542200);
++	mt76_wr(dev, MT_WFDMA0_RX_RING4_EXT_CTRL, PREFETCH(0x0000, 0x8));
++	mt76_wr(dev, MT_WFDMA0_RX_RING6_EXT_CTRL, PREFETCH(0x0080, 0x8));
++	mt76_wr(dev, MT_WFDMA0_RX_RING7_EXT_CTRL, PREFETCH(0x0100, 0x4));
++	mt76_wr(dev, MT_WFDMA0_TX_RING16_EXT_CTRL, PREFETCH(0x0140, 0x4));
++	mt76_wr(dev, MT_WFDMA0_TX_RING15_EXT_CTRL, PREFETCH(0x0180, 0x10));
++	mt76_wr(dev, MT_WFDMA0_TX_RING0_EXT_CTRL, PREFETCH(0x0280, 0x4));
++}
++
++static void mt7927_wfdma_setup(struct mt792x_dev *dev)
++{
++	mt76_set(dev, MT_WFDMA0_GLO_CFG,
++		 MT_WFDMA0_GLO_CFG_ADDR_EXT_EN |
++		 MT_WFDMA0_GLO_CFG_FW_DWLD_BYPASS_DMASHDL);
++	mt76_clear(dev, MT_WFDMA0_GLO_CFG,
++		   MT_WFDMA0_GLO_CFG_CSR_LBK_RX_Q_SEL_EN);
++	mt76_rmw(dev, MT_WFDMA0_GLO_CFG_EXT1, BIT(28), BIT(28));
++	mt76_set(dev, MT_WFDMA0_INT_RX_PRI, 0x0F00);
++	mt76_set(dev, MT_WFDMA0_INT_TX_PRI, 0x7F00);
++}
++
+ static void mt792x_dma_prefetch(struct mt792x_dev *dev)
+ {
+-	if (is_mt7925(&dev->mt76)) {
+-		/* rx ring */
+-		mt76_wr(dev, MT_WFDMA0_RX_RING0_EXT_CTRL, PREFETCH(0x0000, 0x4));
+-		mt76_wr(dev, MT_WFDMA0_RX_RING1_EXT_CTRL, PREFETCH(0x0040, 0x4));
+-		mt76_wr(dev, MT_WFDMA0_RX_RING2_EXT_CTRL, PREFETCH(0x0080, 0x4));
+-		mt76_wr(dev, MT_WFDMA0_RX_RING3_EXT_CTRL, PREFETCH(0x00c0, 0x4));
+-		/* tx ring */
+-		mt76_wr(dev, MT_WFDMA0_TX_RING0_EXT_CTRL, PREFETCH(0x0100, 0x10));
+-		mt76_wr(dev, MT_WFDMA0_TX_RING1_EXT_CTRL, PREFETCH(0x0200, 0x10));
+-		mt76_wr(dev, MT_WFDMA0_TX_RING2_EXT_CTRL, PREFETCH(0x0300, 0x10));
+-		mt76_wr(dev, MT_WFDMA0_TX_RING3_EXT_CTRL, PREFETCH(0x0400, 0x10));
+-		mt76_wr(dev, MT_WFDMA0_TX_RING15_EXT_CTRL, PREFETCH(0x0500, 0x4));
+-		mt76_wr(dev, MT_WFDMA0_TX_RING16_EXT_CTRL, PREFETCH(0x0540, 0x4));
++	if (is_mt7927(&dev->mt76)) {
++		mt7927_dma_prefetch_setup(dev);
++	} else if (is_mt7925(&dev->mt76)) {
++		mt7925_dma_prefetch_setup(dev);
+ 	} else if (is_mt7902(&dev->mt76)) {
+ 		/* rx ring */
+ 		mt76_wr(dev, MT_WFDMA0_RX_RING0_EXT_CTRL, PREFETCH(0x0000, 0x4));
+@@ -166,11 +266,11 @@ int mt792x_dma_enable(struct mt792x_dev
+ 	mt76_set(dev, MT_WFDMA0_GLO_CFG,
+ 		 MT_WFDMA0_GLO_CFG_TX_DMA_EN | MT_WFDMA0_GLO_CFG_RX_DMA_EN);
+ 
+-	if (is_mt7925(&dev->mt76)) {
+-		mt76_rmw(dev, MT_UWFDMA0_GLO_CFG_EXT1, BIT(28), BIT(28));
+-		mt76_set(dev, MT_WFDMA0_INT_RX_PRI, 0x0F00);
+-		mt76_set(dev, MT_WFDMA0_INT_TX_PRI, 0x7F00);
+-	}
++	if (is_mt7927(&dev->mt76))
++		mt7927_wfdma_setup(dev);
++	else if (is_mt7925(&dev->mt76))
++		mt7925_wfdma_setup(dev);
++
+ 	mt76_set(dev, MT_WFDMA_DUMMY_CR, MT_WFDMA_NEED_REINIT);
+ 
+ 	/* enable interrupts for TX/RX rings */
+@@ -281,6 +381,11 @@ int mt792x_dma_disable(struct mt792x_dev
+ 				 MT_WFDMA0_GLO_CFG_RX_DMA_BUSY, 0, 100, 1))
+ 		return -ETIMEDOUT;
+ 
++	if (is_mt7927(&dev->mt76)) {
++		mt76_wr(dev, MT_WFDMA0_RST_DTX_PTR, ~0);
++		mt76_wr(dev, MT_WFDMA0_RST_DRX_PTR, ~0);
++	}
++
+ 	/* disable dmashdl */
+ 	mt76_clear(dev, MT_WFDMA0_GLO_CFG_EXT0,
+ 		   MT_WFDMA0_CSR_TX_DMASHDL_ENABLE);
+@@ -370,7 +475,54 @@ int mt792x_poll_rx(struct napi_struct *n
+ }
+ EXPORT_SYMBOL_GPL(mt792x_poll_rx);
+ 
+-int mt792x_wfsys_reset(struct mt792x_dev *dev)
++static void mt7927_sema_status_read(struct mt792x_dev *dev, u32 addr)
++{
++	u32 remap;
++
++	remap = mt76_rr(dev, MT7927_PCIE2AP_REMAP_WF_0_54);
++	mt76_wr(dev, MT7927_PCIE2AP_REMAP_WF_0_54,
++		(remap & ~MT7927_PCIE2AP_REMAP_WF_0_54_MASK) |
++		MT7927_PCIE2AP_REMAP_WF_0_54_VAL);
++	usleep_range(10, 20);
++
++	mt76_rr(dev, addr);
++
++	mt76_wr(dev, MT7927_PCIE2AP_REMAP_WF_0_54, remap);
++	usleep_range(10, 20);
++}
++
++static int mt7927_wfsys_reset(struct mt792x_dev *dev)
++{
++	struct mt76_dev *mdev = &dev->mt76;
++	u32 val;
++
++	mt7927_sema_status_read(dev, MT7927_SEMA_OWN_STA);
++
++	mt76_set(dev, MT7927_CBINFRA_RGU_WF_RST,
++		 MT7927_CBINFRA_RGU_WF_RST_WF_SUBSYS);
++	usleep_range(1000, 2000);
++
++	mt76_clear(dev, MT7927_CBINFRA_RGU_WF_RST,
++		   MT7927_CBINFRA_RGU_WF_RST_WF_SUBSYS);
++	usleep_range(5000, 10000);
++
++	mt76_wr(dev, MT7927_CBINFRA_MCU_OWN_SET, BIT(0));
++
++	if (!__mt76_poll_msec(mdev, MT7927_ROMCODE_INDEX, 0xffff,
++			      MT7927_MCU_IDLE_VALUE, 200)) {
++		val = mt76_rr(dev, MT7927_ROMCODE_INDEX);
++		dev_err(mdev->dev,
++			"MT7927 WFSYS reset timeout (ROMCODE_INDEX=0x%04x)\n",
++			val & 0xffff);
++		return -ETIMEDOUT;
++	}
++
++	mt7927_sema_status_read(dev, MT7927_SEMA_OWN_STA_REP);
++
++	return 0;
++}
++
++static int mt792x_wfsys_reset_default(struct mt792x_dev *dev)
+ {
+ 	u32 addr = is_connac2(&dev->mt76) ? 0x18000140 : 0x7c000140;
+ 
+@@ -384,5 +536,13 @@ int mt792x_wfsys_reset(struct mt792x_dev
+ 
+ 	return 0;
+ }
++
++int mt792x_wfsys_reset(struct mt792x_dev *dev)
++{
++	if (is_mt7927(&dev->mt76))
++		return mt7927_wfsys_reset(dev);
++
++	return mt792x_wfsys_reset_default(dev);
++}
+ EXPORT_SYMBOL_GPL(mt792x_wfsys_reset);
+ 
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x.h linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x.h
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x.h	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x.h	2026-07-06 18:41:22.258034700 +0200
+@@ -46,12 +46,14 @@
+ #define MT7921_FIRMWARE_WM	"mediatek/WIFI_RAM_CODE_MT7961_1.bin"
+ #define MT7922_FIRMWARE_WM	"mediatek/WIFI_RAM_CODE_MT7922_1.bin"
+ #define MT7925_FIRMWARE_WM	"mediatek/mt7925/WIFI_RAM_CODE_MT7925_1_1.bin"
++#define MT7927_FIRMWARE_WM	"mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin"
+ 
+ #define MT7902_ROM_PATCH	"mediatek/WIFI_MT7902_patch_mcu_1_1_hdr.bin"
+ #define MT7920_ROM_PATCH	"mediatek/WIFI_MT7961_patch_mcu_1a_2_hdr.bin"
+ #define MT7921_ROM_PATCH	"mediatek/WIFI_MT7961_patch_mcu_1_2_hdr.bin"
+ #define MT7922_ROM_PATCH	"mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin"
+ #define MT7925_ROM_PATCH	"mediatek/mt7925/WIFI_MT7925_PATCH_MCU_1_1_hdr.bin"
++#define MT7927_ROM_PATCH	"mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin"
+ 
+ #define MT792x_SDIO_HDR_TX_BYTES	GENMASK(15, 0)
+ #define MT792x_SDIO_HDR_PKT_TYPE	GENMASK(17, 16)
+@@ -204,6 +206,23 @@ struct mt792x_irq_map {
+ 	} rx;
+ };
+ 
++struct mt792x_dma_ring {
++	u8 qid;
++	u16 n_desc;
++	u32 ring_base;
++};
++
++struct mt792x_dma_layout {
++	struct mt792x_dma_ring tx_data0;
++	struct mt792x_dma_ring tx_mcu;
++	struct mt792x_dma_ring tx_fwdl;
++	struct mt792x_dma_ring rx_data;
++	struct mt792x_dma_ring rx_mcu;
++};
++
++#define mt792x_dma_ring(_qid, _n_desc, _ring_base) \
++	{ .qid = (_qid), .n_desc = (_n_desc), .ring_base = (_ring_base) }
++
+ #define mt792x_init_reset(dev)		((dev)->hif_ops->init_reset(dev))
+ #define mt792x_dev_reset(dev)		((dev)->hif_ops->reset(dev))
+ #define mt792x_mcu_init(dev)		((dev)->hif_ops->mcu_init(dev))
+@@ -397,6 +416,8 @@ void mt792x_roc_timer(struct timer_list
+ void mt792x_csa_timer(struct timer_list *timer);
+ void mt792x_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ 		  u32 queues, bool drop);
++int mt792x_get_txpower(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
++		       unsigned int link_id, int *dbm);
+ int mt792x_assign_vif_chanctx(struct ieee80211_hw *hw,
+ 			      struct ieee80211_vif *vif,
+ 			      struct ieee80211_bss_conf *link_conf,
+@@ -419,6 +440,8 @@ void mt792x_sta_statistics(struct ieee80
+ void mt792x_set_coverage_class(struct ieee80211_hw *hw, int radio_idx,
+ 			       s16 coverage_class);
+ void mt792x_dma_cleanup(struct mt792x_dev *dev);
++int mt792x_dma_alloc_queues(struct mt792x_dev *dev,
++			    const struct mt792x_dma_layout *layout);
+ int mt792x_dma_enable(struct mt792x_dev *dev);
+ int mt792x_wpdma_reset(struct mt792x_dev *dev, bool force);
+ int mt792x_wpdma_reinit_cond(struct mt792x_dev *dev);
+@@ -459,6 +482,8 @@ static inline char *mt792x_ram_name(stru
+ 		return MT7922_FIRMWARE_WM;
+ 	case 0x7925:
+ 		return MT7925_FIRMWARE_WM;
++	case 0x7927:
++		return MT7927_FIRMWARE_WM;
+ 	default:
+ 		return MT7921_FIRMWARE_WM;
+ 	}
+@@ -475,6 +500,8 @@ static inline char *mt792x_patch_name(st
+ 		return MT7922_ROM_PATCH;
+ 	case 0x7925:
+ 		return MT7925_ROM_PATCH;
++	case 0x7927:
++		return MT7927_ROM_PATCH;
+ 	default:
+ 		return MT7921_ROM_PATCH;
+ 	}
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_regs.h linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_regs.h
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_regs.h	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_regs.h	2026-07-06 18:41:22.242100555 +0200
+@@ -301,7 +301,9 @@
+ #define MT_WFDMA0_GLO_CFG_FIFO_LITTLE_ENDIAN	BIT(12)
+ #define MT_WFDMA0_GLO_CFG_RX_WB_DDONE	BIT(13)
+ #define MT_WFDMA0_GLO_CFG_CSR_DISP_BASE_PTR_CHAIN_EN BIT(15)
++#define MT_WFDMA0_GLO_CFG_CSR_LBK_RX_Q_SEL_EN	BIT(20)
+ #define MT_WFDMA0_GLO_CFG_OMIT_RX_INFO_PFET2	BIT(21)
++#define MT_WFDMA0_GLO_CFG_ADDR_EXT_EN		BIT(26)
+ #define MT_WFDMA0_GLO_CFG_OMIT_RX_INFO	BIT(27)
+ #define MT_WFDMA0_GLO_CFG_OMIT_TX_INFO	BIT(28)
+ #define MT_WFDMA0_GLO_CFG_CLK_GAT_DIS	BIT(30)
+@@ -310,6 +312,9 @@
+ #define HOST_RX_DONE_INT_ENA1		BIT(1)
+ #define HOST_RX_DONE_INT_ENA2		BIT(2)
+ #define HOST_RX_DONE_INT_ENA3		BIT(3)
++#define MT7927_RX_DONE_INT_ENA4		BIT(12)
++#define MT7927_RX_DONE_INT_ENA6		BIT(14)
++#define MT7927_RX_DONE_INT_ENA7		BIT(15)
+ #define HOST_TX_DONE_INT_ENA0		BIT(4)
+ #define HOST_TX_DONE_INT_ENA1		BIT(5)
+ #define HOST_TX_DONE_INT_ENA2		BIT(6)
+@@ -365,6 +370,13 @@
+ #define MT_WFDMA_EXT_CSR_HIF_MISC	MT_WFDMA_EXT_CSR(0x44)
+ #define MT_WFDMA_EXT_CSR_HIF_MISC_BUSY	BIT(0)
+ 
++#define MT_WFDMA_PREFETCH_CTRL		MT_WFDMA_EXT_CSR(0x30)
++#define MT_WFDMA_PREFETCH_CFG0		MT_WFDMA_EXT_CSR(0xf0)
++#define MT_WFDMA_PREFETCH_CFG1		MT_WFDMA_EXT_CSR(0xf4)
++#define MT_WFDMA_PREFETCH_CFG2		MT_WFDMA_EXT_CSR(0xf8)
++#define MT_WFDMA_PREFETCH_CFG3		MT_WFDMA_EXT_CSR(0xfc)
++#define MT_WFDMA0_GLO_CFG_EXT1		MT_WFDMA0(0x2b4)
++
+ #define MT_SWDEF_BASE			0x41f200
+ #define MT_SWDEF(ofs)			(MT_SWDEF_BASE + (ofs))
+ #define MT_SWDEF_MODE			MT_SWDEF(0x3c)
+@@ -490,4 +502,15 @@
+ #define WFSYS_SW_RST_B			BIT(0)
+ #define WFSYS_SW_INIT_DONE		BIT(4)
+ 
++/* CBInfra registers - MT7927 combo chip */
++#define MT7927_CBINFRA_RGU_WF_RST		0x1f8600
++#define MT7927_CBINFRA_RGU_WF_RST_WF_SUBSYS	BIT(4)
++#define MT7927_CBINFRA_MCU_OWN_SET		0x1f5034
++#define MT7927_ROMCODE_INDEX			0xc1604
++#define MT7927_MCU_IDLE_VALUE			0x1d1e
++#define MT7927_PCIE2AP_REMAP_WF_0_54		0x21008
++#define MT7927_PCIE2AP_REMAP_WF_0_54_MASK	GENMASK(15, 0)
++#define MT7927_PCIE2AP_REMAP_WF_0_54_VAL	0x00001807
++#define MT7927_SEMA_OWN_STA			0x40000
++#define MT7927_SEMA_OWN_STA_REP			0x40400
+ #endif /* __MT792X_REGS_H */
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_usb.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_usb.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/mt792x_usb.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/mt792x_usb.c	2026-07-06 18:41:22.233917891 +0200
+@@ -263,7 +263,7 @@ EXPORT_SYMBOL_GPL(mt792xu_dma_init);
+ 
+ int mt792xu_wfsys_reset(struct mt792x_dev *dev)
+ {
+-	const struct mt792xu_wfsys_desc *desc = is_mt7925(&dev->mt76) ?
++	const struct mt792xu_wfsys_desc *desc = is_connac3(&dev->mt76) ?
+ 						&mt7925_wfsys_desc :
+ 						&mt7921_wfsys_desc;
+ 	u32 val;
+diff -rupN linux-7.1.3/drivers/net/wireless/mediatek/mt76/usb.c linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/usb.c
+--- linux-7.1.3/drivers/net/wireless/mediatek/mt76/usb.c	2026-07-04 13:45:09.000000000 +0200
++++ linux-7.1.3_mt7927_v2.13/drivers/net/wireless/mediatek/mt76/usb.c	2026-07-06 18:41:22.249236297 +0200
+@@ -925,6 +925,7 @@ mt76u_ac_to_hwq(struct mt76_dev *dev, st
+ 		q->ep = q->hw_idx + 1;
+ 		break;
+ 	}
++	case 0x6639:
+ 	case 0x7961:
+ 	case 0x7925:
+ 		q->hw_idx = mt76_ac_to_hwq(ac);
