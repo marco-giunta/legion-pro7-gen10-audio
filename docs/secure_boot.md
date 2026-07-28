@@ -61,7 +61,7 @@ sudo pk12util -i key.p12 -d /etc/pki/pesign
 ```
 
 The key material is now stored in `pesign`'s certificate database at `/etc/pki/pesign/`.
-The `key.pem`, `cert.der`, and `key.p12` files in your working directory are no longer needed for day-to-day operation; you can delete them, or keep them somewhere safe as a backup. If needed, you may generate new certificates by repeating the same steps.
+The `key.pem`, `cert.der`, and `key.p12` files in your working directory are no longer needed for day-to-day operation; if these files are needed again after being deleted, you may generate new certificates by repeating the same steps. With that said, in order to avoid needing to create brand new certificates to be enrolled after BIOS updates, it's recommended to keep a backup of the `cert.der` file somewhere safe (see the BIOS update guide below).
 
 5. ***Queue the certificate for MOK enrollment***
 
@@ -264,3 +264,36 @@ modinfo nvidia | grep signer
 ```
 
 The `signer` field will show the name of the akmods key. This will likely be an auto-generated string like `fedora_<...>` rather than a human-readable name; this is normal, and is the name of the key that was automatically created by akmods on its first use.
+
+---
+
+## Re-enrolling MOK certificates after BIOS updates from a Windows partition
+
+If you update the BIOS from a Windows partition/SSD, two things will happen:
+
+1. The Windows SSD will be put at the highest boot priority (this can be changed by pressing F2 during boot);
+2. The MOK certificates enrolled in the `shim` database will be wiped.
+
+As a consequence of point 2, the patched kernel will refuse to boot if Secure Boot is active, returning a "bad shim signature" error. To fix this, you need to re-enroll the same certificates; [as explained in the RPM Fusion Secure Boot guide](https://rpmfusion.org/Howto/Secure%20Boot), this is a known consequence of BIOS updates from Windows.
+
+### Part 1: re-enroll the kernel certificate
+
+If you have the same `cert.der` file used to sign the patched kernel in part 1, simply repeat step 5:
+
+```bash
+sudo mokutil --import "cert.der"
+```
+
+then enter a password, reboot, and enroll the certificate using that password in the MOK manager as done previously.
+
+If you no longer have the same certificate file, you will need to repeat the entire part 1 guide to generate a new one and re-sign the kernel using the new certificate.
+
+### Part 2: re-enroll the akmods certificate
+
+To re-enroll the NVIDIA module key, since part 2 relies on the automatically generated `akmods` certificates, it suffices to repeat step 3:
+
+```bash
+sudo mokutil --import /etc/pki/akmods/certs/public_key.der
+```
+
+then enter a password, reboot, and enroll the certificate using that password in the MOK manager as done previously.
