@@ -1,0 +1,55 @@
+From 0f560190790a6d010b705551c7d2145fe39b725f Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Tue, 28 Jul 2026 21:07:47 +0200
+Subject: [PATCH v2 0/3] ALSA: hda: Add AW88399 HDA side codec driver for Lenovo Legion
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This is v2 of the AW88399 HDA side codec driver series. Patches 1-5
+from v1 (ASoC library preparation) were applied by Mark Brown and
+merged into tiwai/sound via broonie/sound. This series contains the
+remaining three patches.
+
+Changes since v1:
+* Fixed memory leak of acpi_subsystem_id string on probe error paths
+  by switching to devm_kstrdup (bug reported by Sashiko, confirmed
+  by Takashi Iwai)
+* Added Acked-by tags from Rafael J. Wysocki and Ilpo Järvinen
+  for the ACPI/platform changes
+
+Patch 1 registers the AWINIC ACPI HID "AWDZ8399" with the ACPI
+scan ignore list and the serial-multi-instantiate driver.
+
+Patch 2 adds the HDA side codec driver: I2C bus driver and core
+driver with HDA component binding, playback hooks, power management,
+and per-model quirk matching.
+
+Patch 3 enables the driver on Lenovo Legion Pro models with Realtek
+ALC287 fixups and AW88399 per-model quirks.
+
+Link to v1: https://lore.kernel.org/linux-sound/DS7PR19MB77247D9AD698CF0FF37DB58BFCC62@DS7PR19MB7724.namprd19.prod.outlook.com/T/#t
+
+Marco Giunta (3):
+  ACPI/platform: add AWDZ8399 to serial-multi-instantiate
+  ALSA: hda/scodec: add AW88399 HDA side codec driver
+  ALSA: hda/realtek: enable AW88399 on Lenovo Legion Pro
+
+ drivers/acpi/scan.c                           |   1 +
+ .../platform/x86/serial-multi-instantiate.c   |  10 +
+ sound/hda/codecs/realtek/alc269.c             |  50 +++
+ sound/hda/codecs/side-codecs/Kconfig          |  18 +
+ sound/hda/codecs/side-codecs/Makefile         |   4 +
+ sound/hda/codecs/side-codecs/aw88399_hda.c    | 372 ++++++++++++++++++
+ sound/hda/codecs/side-codecs/aw88399_hda.h    |  36 ++
+ .../hda/codecs/side-codecs/aw88399_hda_i2c.c  |  54 +++
+ 8 files changed, 545 insertions(+)
+ create mode 100644 sound/hda/codecs/side-codecs/aw88399_hda.c
+ create mode 100644 sound/hda/codecs/side-codecs/aw88399_hda.h
+ create mode 100644 sound/hda/codecs/side-codecs/aw88399_hda_i2c.c
+
+
+base-commit: 882fbdfafa8a373c1b544db6a9839c5c8a0d7780
+-- 
+2.55.0
+

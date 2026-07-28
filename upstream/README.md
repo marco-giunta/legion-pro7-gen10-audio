@@ -5,6 +5,13 @@
 
 # Changelog
 
+## v1.1
+Preparation for patch series v2.
+
+- HDA driver patch: fixed potential memory leak of the ACPI SSID string on error probe paths by clearing immediately the working string and relying on `devm_kstrdup` rather than `kstrdup` for the permanent one, to ensure memory allocated for this string is freed when the device is destroyed.
+- Added Acked-by tags for the ACPI/platform patch.
+- Removed patches 1-5 and rebased on `tiwai/sound` after the PR commits from `broonie/sound` that include them.
+
 ## v1
 - Identical to the previous entry, just with some commit messages slightly edited.
 - Submitted for review here: [lore link](https://lore.kernel.org/linux-sound/DS7PR19MB77247D9AD698CF0FF37DB58BFCC62@DS7PR19MB7724.namprd19.prod.outlook.com/T/#t), [patchwork link](https://patchwork.kernel.org/project/alsa-devel/list/?series=1129606).
