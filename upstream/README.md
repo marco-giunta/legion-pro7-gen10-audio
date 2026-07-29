@@ -5,6 +5,10 @@
 
 # Changelog
 
+## v2
+- Identical to the previous entry.
+- Submitted for review here: [lore link](https://lore.kernel.org/linux-sound/DS7PR19MB7724AB9AA5096BF2F00014B0FCCA2@DS7PR19MB7724.namprd19.prod.outlook.com/T/#t), [patchwork link](https://patchwork.kernel.org/project/alsa-devel/list/?series=1136512).
+
 ## v1.1
 Preparation for patch series v2.
 
