@@ -1,26 +1,18 @@
 # How to open an issue to add support for new IDs
 
-If the ACPI check described in the README confirms your laptop references the AW88399, open an issue using the steps below.
+If your laptop passes the three checks described in the README, open an issue using the steps below.
 
-I can then try adding support for your machine by including its PCI ID, but I make no promises it will work.
+I can then try adding support for your machine by including its codec ID, but I make no promises it will work.
 
 ---
-
-## Before you begin: confirm your laptop uses the AW88399
-
-Finding `AWDZ8399.bin` in the Windows driver is a necessary but **not sufficient** condition for needing the AW88399 fix: some Lenovo audio drivers are multipurpose and bundle firmware for chips not present in every model. Before opening an issue, confirm your laptop actually uses the AW88399 by running:
-
-```bash
-sudo strings /sys/firmware/acpi/tables/DSDT | grep AWDZ8399
-```
-
-If this returns output, your laptop's ACPI table references the AW88399 and you are likely on the right track. If it returns nothing, your woofers are broken for a different reason - possibly needing an easyeffects profile like on the Legion Pro 5i Gen 10. In that case, before opening an issue, please try performing the steps in the ["other legions" guide](docs/other_legions_guide.md).
 
 ## Required basic information
 
 Your issue *must* include the following basic information:
 
-- Whether you found the `AWDZ8399.bin` binary with matching checksum in the Windows driver, and where you downloaded the driver from;
+- The results of the 3 checks from the "How to tell whether this patch applies to your laptop" section of the main readme;
+
+- Whether the `AWDZ8399.bin` binary you found has a matching checksum with the one contained in this repo, and where you downloaded the `.exe` file from;
 
 - Your laptop manufacturer and model, which you can confirm by running:
 
@@ -49,6 +41,15 @@ cat $(grep -l "Codec: Realtek" /proc/asound/card*/codec#*)
 ```bash
 uname -r
 ```
+
+- The *full* output of the last of these commands (this requires the `iasl` package):
+```sh
+sudo cp /sys/firmware/acpi/tables/DSDT /tmp/dsdt.dat
+sudo iasl -d /tmp/dsdt.dat
+grep -B5 -A85 'Name (_HID, "AWDZ8399")' /tmp/dsdt.dsl
+```
+
+- Whether you already separately patched the kernel with the patch files from this repo.
 
 ---
 
@@ -108,6 +109,7 @@ Once you're running the patched kernel, you must perform the following diagnosti
 3. Copy the output of these commands:
 ```bash
 sudo dmesg | grep -i aw88399
+sudo dmesg | grep -i AWDZ8399
 sudo dmesg | grep -i alc269
 # run the following 2 commands while some music is playing on the speakers
 sudo cat /sys/kernel/debug/regmap/i2c-AWDZ8399:00-aw88399-hda.0/registers

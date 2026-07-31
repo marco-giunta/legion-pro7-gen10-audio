@@ -92,8 +92,11 @@ require_supported_device() {
         warn "Your device references the AW88399 smart amp in its ACPI table,"
         warn "which means it likely has the same audio hardware as the supported"
         warn "Legion Pro 7/7i models, but with an SSID not yet in the patch."
-        warn "Please open an issue at https://github.com/${GITHUB_REPO}/issues"
-        warn "and paste this script's output. This will help add support for your laptop."
+        warn "Please follow the instructions from the README of"
+        warn "https://github.com/${GITHUB_REPO}"
+        warn "to confirm your laptop does have the AW88399 smart amp;"
+        warn "if all the checks are passed, please open an issue in the same repo"
+        warn "using the instructions from the 'support new laptops' guide."
     else
         warn "Your device does not use the AW88399 smart amp."
         warn "If your laptop's woofers don't work on Linux, it may be tempting to try"
