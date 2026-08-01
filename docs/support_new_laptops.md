@@ -22,10 +22,15 @@ cat /sys/class/dmi/id/product_family
 cat /sys/class/dmi/id/product_name
 ```
 
-- Your subsystem ID, which you can find by running:
+- Your HDA codec subsystem ID, which you can find by running:
 
 ```bash
 grep -l "Codec: Realtek" /proc/asound/card*/codec#* | xargs grep -i "Subsystem Id"
+```
+
+- Your PCI SSID, which you can find by pasting the entire output of:
+```bash
+lspci -vnn | grep -A1 -i audio
 ```
 
 - The Linux audio codec dump, obtained by copying the *full* output of this command:
