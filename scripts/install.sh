@@ -60,7 +60,7 @@ has_aw88399_acpi() {
 }
 
 # Prerequisites helpers
-SUPPORTED_SSIDS=("17aa3906" "17aa3907" "17aa3927" "17aa3928" "17aa3938" "17aa3939")
+SUPPORTED_SSIDS=("17aa3906" "17aa3907" "17aa3927" "17aa3928" "17aa3936" "17aa3937" "17aa3938" "17aa3939")
 
 # Detected SSID, set by require_supported_device and reused later
 DEVICE_SSID=""

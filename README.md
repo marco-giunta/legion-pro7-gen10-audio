@@ -17,6 +17,7 @@ This repository provides kernel patches and pre-built RPM packages for the model
 - Lenovo Legion Pro 7 Gen 10 (16AFR10H) - AMD
 - Lenovo Legion Y9000P 2025 (IAX10) - Intel
 - Lenovo Legion R9000P 2025 (ADR10) - AMD
+- Lenovo Legion R9000P 2025 (ADR10H) - AMD
 
 **Other models with separate, simpler fixes**
 
@@ -102,6 +103,7 @@ grep -l "Codec: Realtek" /proc/asound/card*/codec#* | xargs grep -i "Subsystem I
 You should see a line like `Subsystem Id: 0x17aa<...>`, where `<...>` equals 4 characters. These are the IDs currently supported by the patch:
 - `0x17aa3906`, `0x17aa3907` - Legion Pro 7i Gen 10 / Y9000P 2025 (16IAX10H / IAX10, Intel)
 - `0x17aa3927`, `0x17aa3928` - Legion R9000P 2025 (ADR10, AMD)
+- `0x17aa3936`, `0x17aa3937` - Legion R9000P 2025 (ADR10H, AMD)
 - `0x17aa3938`, `0x17aa3939` - Legion Pro 7 Gen 10 (16AFR10H, AMD)
 
 If your ID matches one of these, proceed to step 1.
