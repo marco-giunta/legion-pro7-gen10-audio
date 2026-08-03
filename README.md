@@ -4,7 +4,9 @@
 
 > Patched Linux audio drivers for Lenovo Legion Pro 7/7i Gen 10 (AMD & Intel). Includes Fedora RPM packages and installation automation. [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model.
 
-> **The patch has been submitted for upstream review; see [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and [here](/upstream/README.md) for more info.**
+> **The AW88399 HDA side codec driver has been accepted into the Linux kernel and will ship with kernel 7.3.** Once 7.3 is released, users will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/README.md) for details.
+>
+> **Firmware note:** The firmware file (`aw88399_acf.bin`) is not yet in the `linux-firmware` repository. Even on kernel 7.3, users will need to install it manually. We are actively working with Lenovo and AWINIC to get the firmware submitted upstream for full out-of-the-box support. See [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65#issuecomment-5130273339) for more info.
 
 Recent Lenovo Legion laptops drive their woofers using the AW88399 Smart Amp via I2C bus as side codecs to a Realtek ALC287 HDA codec, in a setup that requires a driver which currently doesn't exist in the mainline Linux kernel. Due to this, on the current stock Linux kernel, the woofers don't work, and as a result the speakers lack bass and overall sound quiet and tinny.
 
@@ -447,10 +449,40 @@ I can then try adding support for your device by adding its ID, but be aware tha
 ## Credits
 
 ### Audio patch
-This project builds upon the Intel audio driver work by Lyapsus, Nadim Kobeissi and others at [nadimkobeissi/16iax10h-linux-sound-saga](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga). I worked on porting the patch to the AMD model, fixing the broken bass volume controls, the distorted internal mic, the echoing jack, extending parts of the patch, reverse engineering parts of the Windows driver, and automating the process of building the patched kernel using Fedora's tools. See [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/30#issuecomment-4176726805), [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/34#issuecomment-4176480130) and [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/55#issue-4343077194) for detailed descriptions.
+
+This project would not exist without the contributions of many people.
+
+The original Intel audio driver work was done by **Yakov Till (Lyapsus)** and **Nadim Kobeissi** at [nadimkobeissi/16iax10h-linux-sound-saga](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga). Lyapsus wrote the initial working prototype that proved the HDA side codec approach, and Nadim organized the bounty effort that brought the community together.
+
+Building on their work, I (**Marco Giunta**) reworked the patch into an upstream-ready driver: porting to the AMD platform, extracting a shared library from the existing ASoC driver, fixing volume controls via DAC rerouting, fixing internal mic calibration, adding per-model quirk infrastructure with ACPI subsystem ID matching, removing unused code, and navigating the upstream submission process through to acceptance into the Linux kernel by multiple maintainers.
+
+Regarding userspace level, I explored the cause of the bleeding jack issue by reverse engineering parts of the Windows driver, built Fedora-specific automation tools for this repo specifically, and wrote extensive documentation for this repo as well as Nadim's.
+
+For some historical references, see issues [#30](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/30#issuecomment-4176726805), [#34](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/34), [#55](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/55), [#65](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65), as well as the [upstream folder's readme](upstream/README.md).
+
+The upstream patches can be viewed on the lore archives:
+- [v1 (ASoC library, patches 1-5)](https://lore.kernel.org/linux-sound/DS7PR19MB77247D9AD698CF0FF37DB58BFCC62@DS7PR19MB7724.namprd19.prod.outlook.com/T/#t)
+- [v2 (HDA driver + realtek fixups + SMI I2C entries, patches 6-8)](https://lore.kernel.org/linux-sound/DS7PR19MB7724AB9AA5096BF2F00014B0FCCA2@DS7PR19MB7724.namprd19.prod.outlook.com/T/#t)
+
+#### Individual contributions
+
+This project would have never happened without the help of several amazing people. I am personally indebted especially to these awesome people (in approximately chronological order):
+
+- Nadim Kobeissi (@nadimkobeissi): started this project, conducted the initial investigation, organized the bounty effort, and tested on the original 16IAX10H. I am especially thankful to Nadim for trusting me with the keys of this kingdom.
+- Yakov Till (@Lyapsus): wrote the initial working prototype driver that proved the approach and provided the foundation for everything that followed. Without his work, none of this would have been possible. I am also thankful for the fruitful discussions.
+- @philstopford and @gluceri: helped add AMD support, tested volume controls fix, reported the mic calibration issue and tested the fix, and were the first people to test my contributions (and more generally to believe in me).
+- @msteele: reported the second AMD codec SSID early
+- Xia Yun'an (@imitoy): helped add Y9000P support, extensively tested all iterations of the upstream patch series, and is actively helping contact AWINIC for firmware upstream submission
+- Munzir Taha (@munzirtaha): reported the firmware reload bug and SOF/mic profile issues, tested the upstream patch series, and provided consistently detailed diagnostic reports (most eagle-eyed tester ever).
+- @ZephyrSober, @bash-shabash, @tduck1equack: helped add R9000P ADR10 support by reporting the PCI SSID collision and testing the fix
+- Finally, I extend my thanks to everyone who contributed time, energy, logs, codec dumps, money to the bounty, or simply reported their experience (especially those who did so before I joined the project)
+
+If you helped me personally but I forgot to mention you by name, please know it's not for lack of gratitude; this project had many hands, and every contribution mattered. I may simply be misremembering something from the past ~8 months.
+
+It's been an amazing journey; I learned a lot, got to meet and collaborate with many wonderful people, and I'm grateful to everyone who made it possible. If in the future we need to fix something or add support for new devices, please don't hesitate to contact me. In the meantime, I will keep supporting the combined patch for kernels 7.1 and 7.2 until 7.3 ships with the driver built in.
 
 <details>
-<summary>Full credits from Nadim Kobeissi's repository</summary>
+<summary>Original credits from Nadim Kobeissi's repository</summary>
 
 > Fixing this issue required weeks of intensive work from multiple people.
 
@@ -468,7 +500,7 @@ This project builds upon the Intel audio driver work by Lyapsus, Nadim Kobeissi 
 </details>
 
 ### mt7927 patch
-All credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms); I haven’t made any meaningful changes to their work. The only difference between their repo and the contents of my [patches/mt7927](patches/mt7927) folder is that I repackaged the split patches in a single file, since this repo is focused on building a patched kernel rather than upstream review or DKMS packaging.
+All credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms); I haven't made any meaningful changes to their work. The only difference between their repo and the contents of my [patches/mt7927](patches/mt7927) folder is that I repackaged the split patches in a single file, since this repo is focused on building a patched kernel rather than upstream review or DKMS packaging.
 
 ---
 ## License
