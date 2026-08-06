@@ -26,6 +26,7 @@ This repository provides kernel patches and pre-built RPM packages for the model
 These models do *not* need a patched kernel, only some software tweaks; see the ["Other Legions" guide](docs/other_legions_guide.md).
 - Legion Pro 5i Gen 10 (16IAX10H) - Intel
 - Legion Pro 5 Gen 10 (16AFR10) - AMD
+- Legion Pro 5 Gen 9 (16ADR10) - AMD
 - Legion 5i/7i Gen 10 (16IAX10) - Intel
 
 Other Legion models may also benefit from this patch despite being currently unsupported.
@@ -120,7 +121,7 @@ Before opening an issue, verify that your laptop satisfies the requirements desc
 
 If all checks pass, please open an issue following the instructions from the ["support new laptops" guide](docs/support_new_laptops.md).
 
-Similarly, if you don't get a matching codec SSID *and* your laptop is a model other than one of the supported ones, perform the same basic diagnostics before opening an issue with the same "support new laptops" guide. If you own a Legion 5i/7i 16IAX10, a Legion Pro 5i 16IAX10H, or a Legion Pro 5 16AFR10, you don't need a patched kernel at all; see the [audio guide for other Legion models](docs/other_legions_guide.md).
+Similarly, if you don't get a matching codec SSID *and* your laptop is a model other than one of the supported ones, perform the same basic diagnostics before opening an issue with the same "support new laptops" guide. If you own a Legion 5i/7i 16IAX10, a Legion Pro 5i 16IAX10H, or a Legion Pro 5 16AFR10/16ADR10, you don't need a patched kernel at all; see the [audio guide for other Legion models](docs/other_legions_guide.md).
 
 1. **Install the firmware**
 - Download the [`aw88399_acf.bin` file](firmware/aw88399/aw88399_acf.bin); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in the [firmware extraction guide](docs/firmware_extraction.md).
