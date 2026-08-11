@@ -305,8 +305,6 @@ echo    "       You should see a string containing 'legion'."
 echo    "    2. If the patched kernel doesn't boot automatically, quickly press ESC"
 echo    "       repeatedly during boot to open the GRUB menu and select the entry"
 echo    "       containing 'legion' in its name. Then check again with uname -r"
-echo    "    3. In your OS sound settings, select the"
-echo    "       'Analog stereo duplex' profile."
 echo
 echo -e "  ${BOLD}Further improvements:${RESET}"
 echo    "  See the 'Optional Post-installation Steps' section of the README for"
