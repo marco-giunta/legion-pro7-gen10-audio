@@ -32,7 +32,7 @@ These models do *not* need a patched kernel, only some software tweaks; see the 
 - Legion 5i/7i Gen 10 (16IAX10) - Intel
 
 Other Legion models may also benefit from this patch despite being currently unsupported.
-To determine whether your laptop is a candidate for this driver, see **Step 0** of the manual installation guide or the **"Will this patch work on other laptops?"** FAQ. In short, the laptop must have dedicated woofers driven by an AW88399 Smart Amplifier. The FAQ below explains how to verify this using the speaker specifications, ACPI tables, and the official Lenovo Windows audio driver for your machine.
+To determine whether your laptop is a candidate for this driver, see **Step 0** of the manual installation guide or the [**"Will this patch work on other laptops?"**](#will-this-patch-work-on-other-laptops) FAQ. In short, the laptop must have dedicated woofers driven by an AW88399 Smart Amplifier. The FAQ below explains how to verify this using the speaker specifications, ACPI tables, and the official Lenovo Windows audio driver for your machine.
 
 **Credits & Attributions**
 
@@ -113,11 +113,13 @@ If your ID matches one of these, proceed to step 1.
 
 If your ID is not listed, but your laptop is one of the supported models, it may simply be an undiscovered hardware revision.
 
-Before opening an issue, verify that your laptop satisfies the requirements described in the **"Will this patch work on other laptops?"** FAQ:
+Before opening an issue, verify that your laptop satisfies the requirements described in the [**"Will this patch work on other laptops?"**](#will-this-patch-work-on-other-laptops) FAQ. In short, you must ensure that:
 
 - it has two dedicated woofers and a Smart Amplifier (as stated on the PSREF website);
 - its ACPI tables contain the `AWDZ8399` entry;
 - its Windows Realtek audio driver contains the `AWDZ8399.bin` firmware binary file.
+
+More details in that FAQ entry.
 
 If all checks pass, please open an issue following the instructions from the ["support new laptops" guide](docs/support_new_laptops.md).
 
