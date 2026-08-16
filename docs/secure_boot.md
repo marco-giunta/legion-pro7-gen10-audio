@@ -19,7 +19,8 @@ To enable Secure Boot support, two separate signing operations are needed, each 
 1. *Kernel image signing*: this must be done manually once; it can then be automated on each kernel update via a hook script.
 2. *NVIDIA kernel modules signing*: this must also be done manually once, then it will be handled automatically by `akmods` on each kernel/driver update.
 
-> ⚠️ If you dual boot Windows, ***before changing any BIOS setting***, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it e.g. after disabling Secure Boot, so make sure you're not locked out.
+> [!WARNING]
+> If you dual boot Windows, ***before changing any BIOS setting***, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it e.g. after disabling Secure Boot, so make sure you're not locked out.
 
 ---
 
@@ -95,7 +96,8 @@ Using the arrow keys and Enter:
 - Enter the enrollment password you set in step 5
 - Select **OK**, then **Reboot**
 
-> ⚠️ The MOKManager screen maps the keyboard as **US QWERTY** regardless of your layout. If you use a different layout, type your password as if you were on a US QWERTY keyboard.
+> [!WARNING]
+> The MOKManager screen maps the keyboard as **US QWERTY** regardless of your layout. If you use a different layout, type your password as if you were on a US QWERTY keyboard.
 
 The system will boot back into Fedora. Do **not** enable Secure Boot yet; the NVIDIA key enrollment in Part 2 requires another reboot cycle first.
 

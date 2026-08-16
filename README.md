@@ -4,8 +4,10 @@
 
 > Patched Linux audio drivers for Lenovo Legion Pro 7/7i Gen 10 (AMD & Intel). Includes Fedora RPM packages and installation automation. [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model.
 
+> [!NOTE]
 > **The AW88399 HDA side codec driver has been accepted into the Linux kernel and will ship with kernel 7.3.** Once 7.3 is released, users will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/README.md) for details.
->
+
+> [!IMPORTANT]
 > **Firmware note:** The firmware file (`aw88399_acf.bin`) is not yet in the `linux-firmware` repository. Even on kernel 7.3, users will need to install it manually. We are actively working with Lenovo and AWINIC to get the firmware submitted upstream for full out-of-the-box support. See [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65#issuecomment-5130273339) for more info.
 
 Recent Lenovo Legion laptops drive their woofers using the AW88399 Smart Amp via I2C bus as side codecs to a Realtek ALC287 HDA codec, in a setup that requires a driver which currently doesn't exist in the mainline Linux kernel. Due to this, on the current stock Linux kernel, the woofers don't work, and as a result the speakers lack bass and overall sound quiet and tinny.
@@ -76,7 +78,8 @@ Because of this, Secure Boot must either be disabled or properly configured befo
 2. Install the patched kernel and NVIDIA drivers, and verify that the system boots correctly;
 3. Optionally, sign the kernel and drivers, then re-enable Secure Boot (see the [Secure Boot guide](docs/secure_boot.md) for instructions).
 
-> ⚠️ If you dual boot Windows, ***before changing any BIOS setting***, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it e.g. after disabling Secure Boot, so make sure you're not locked out.
+> [!WARNING]
+> If you dual boot Windows, ***before changing any BIOS setting***, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it e.g. after disabling Secure Boot, so make sure you're not locked out.
 
 ## Installation guides
 There are two main ways to install the patched kernel on Fedora.
@@ -159,6 +162,7 @@ To obtain your own copy of these Mediatek binaries from official Windows drivers
 
 The `akmod-nvidia` package is needed to automatically build the NVIDIA driver for the patched kernel. This package builds the driver as distributed in the nonfree RPM Fusion repo, and is [the standard approach on Fedora](https://rpmfusion.org/Howto/NVIDIA) and what this guide assumes.
 
+> [!NOTE]
 > Skip this step if you prefer the open source Mesa/NVK driver, want to obtain the proprietary driver from a different repo, or are on a Fedora derivative that already manages the NVIDIA driver for you. Since the patch only touches audio (and optionally WiFi/BT on the AMD model), there's no fundamental reason why a different graphics setup shouldn't work; however, alternative paths are untested, so you're on your own. Feel free to open an issue if you run into anything useful to share. If you're unsure, just follow the steps below.
 
 
@@ -352,7 +356,8 @@ A black screen can also indicate a GPU driver initialization failure.
 
 To find out which is it, follow these steps in order.
 
-> ⚠️ If you dual boot Windows, ***before changing any BIOS setting***, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it e.g. after disabling Secure Boot, so make sure you're not locked out.
+> [!WARNING]
+> If you dual boot Windows, ***before changing any BIOS setting***, go to https://account.microsoft.com/devices/recoverykey and make sure you have your BitLocker recovery key saved and noted down. Windows will ask for it e.g. after disabling Secure Boot, so make sure you're not locked out.
 
 1. Check if Secure Boot is enabled in the BIOS settings (it will be if your machine came with Windows and you haven't disabled SB yet); if so, disable SB and try booting the patched kernel. If this works, Secure Boot was the issue.
 2. If the above doesn't fix the black screen, the issue is likely GPU driver related. With Secure Boot still disabled, try the following:
