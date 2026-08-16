@@ -268,59 +268,12 @@ If you use live monitoring applications (like reaper or audacity) with the headp
 ### Can I use this on other Linux distros?
 The prepackaged RPMs are Fedora-specific. For other distros, follow the steps in [Nadim's repo](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga) to compile the Linux kernel without relying on Fedora specific tools.
 
-Please notice that, if you have the AMD model, the same
+The two new config parameters introduced by this patch (which you must add to your configuration file) are:
 ```
 CONFIG_SND_HDA_SCODEC_AW88399=m
 CONFIG_SND_HDA_SCODEC_AW88399_I2C=m
 ```
-config parameters as for the Intel models are needed, but not the Intel-specific ones; use the AMD specific ones instead. The ones used by Fedora are shown in the table below; however, given that a) not all of them are actually used, b) you also need other audio related parameters (e.g. the alc269 codec), and c) most distros build their kernels with every config already included to maximize hardware compatibility, I recommend you just use the same parameters used to compile the kernel you already have. In practice, this means going to `/boot`, copying the appropriate `config-<kernel version>` file, and appending the `CONFIG_SND_HDA_SCODEC_AW88399=m` and `CONFIG_SND_HDA_SCODEC_AW88399_I2C=m` parameters (everything else you need for both the Intel and AMD models will realistically already be there).
-<details>
-<summary>AMD audio config parameters (click here)</summary>
-
-```bash
-CONFIG_SND_SOC_AMD_ACP=m
-CONFIG_SND_SOC_AMD_CZ_DA7219MX98357_MACH=m
-CONFIG_SND_SOC_AMD_CZ_RT5645_MACH=m
-CONFIG_SND_SOC_AMD_ST_ES8336_MACH=m
-CONFIG_SND_SOC_AMD_ACP3x=m
-CONFIG_SND_SOC_AMD_RV_RT5682_MACH=m
-CONFIG_SND_SOC_AMD_RENOIR=m
-CONFIG_SND_SOC_AMD_RENOIR_MACH=m
-CONFIG_SND_SOC_AMD_ACP5x=m
-CONFIG_SND_SOC_AMD_VANGOGH_MACH=m
-CONFIG_SND_SOC_AMD_ACP6x=m
-CONFIG_SND_SOC_AMD_YC_MACH=m
-CONFIG_SND_AMD_ACP_CONFIG=m
-CONFIG_SND_SOC_AMD_ACP_COMMON=m
-CONFIG_SND_SOC_ACPI_AMD_MATCH=m
-CONFIG_SND_SOC_AMD_ACP_PDM=m
-CONFIG_SND_SOC_AMD_ACP_LEGACY_COMMON=m
-CONFIG_SND_SOC_AMD_ACP_I2S=m
-CONFIG_SND_SOC_AMD_ACPI_MACH=m
-CONFIG_SND_SOC_AMD_ACP_PCM=m
-CONFIG_SND_SOC_AMD_ACP_PCI=m
-CONFIG_SND_AMD_ASOC_RENOIR=m
-CONFIG_SND_AMD_ASOC_REMBRANDT=m
-CONFIG_SND_AMD_ASOC_ACP63=m
-CONFIG_SND_AMD_ASOC_ACP70=m
-CONFIG_SND_SOC_AMD_MACH_COMMON=m
-CONFIG_SND_SOC_AMD_LEGACY_MACH=m
-CONFIG_SND_SOC_AMD_SOF_MACH=m
-CONFIG_SND_SOC_AMD_SDW_MACH_COMMON=m
-CONFIG_SND_SOC_AMD_SOF_SDW_MACH=m
-CONFIG_SND_SOC_AMD_LEGACY_SDW_MACH=m
-CONFIG_SND_AMD_SOUNDWIRE_ACPI=m
-CONFIG_SND_SOC_AMD_RPL_ACP6x=m
-CONFIG_SND_SOC_AMD_ACP63_TOPLEVEL=m
-CONFIG_SND_SOC_AMD_SOUNDWIRE_LINK_BASELINE=m
-CONFIG_SND_SOC_AMD_SOUNDWIRE=m
-CONFIG_SND_SOC_AMD_PS=m
-CONFIG_SND_SOC_AMD_PS_MACH=m
-```
-
-</details>
-
-Nadim's repo includes a section on how to extract the same list of parameters using `/proc/config.gz`. This is functionally equivalent to copying `/boot/config<...>` as described above, but the latter method is more universal, as the `/proc/config.gz` file doesn't exist on every distro (for example, Fedora doesn't include it).
+These apply to both Intel and AMD models. For everything else, it's recommended you use your existing distro kernel config as a base by copying `/boot/config-$(uname -r)` and appending the two lines above, as described in Nadim's main guide (the one that relies on the kernel's `make` utilities directly). If your distro offers higher-level build tooling (similar to Fedora's `fedpkg`), you may be able to pass these parameters directly rather than editing the config file manually; check your distro's documentation. For more details on the differences between these build methods, see Nadim's repo.
 
 ### Can I build my own kernel RPMs on Fedora?
 If you wish to compile your own kernel under Fedora Linux, I recommend using my [Fedora specific self-compile guide](docs/self_compile.md) over the [original](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga), as it will make the process much easier: thanks to `fedpkg`, there is no need to manually pick kernel parameters, setup NVIDIA drivers, generate the initramfs, update the grub menu, or copy the files needed to install the patched kernel.
