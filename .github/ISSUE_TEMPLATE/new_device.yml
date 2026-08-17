@@ -197,9 +197,8 @@ body:
     id: windows_dump
     attributes:
       label: Windows codec dump (optional but helpful)
-      description: Copy-paste the contents of the .txt file produced by RtHDDump_V236.exe as described in docs/support_new_laptops.md. If you cannot run it, leave this blank.
-      placeholder: Copy-paste file contents or leave blank.
-      render: text
+      description: Attach the .txt file produced by RtHDDump_V236.exe as described in docs/support_new_laptops.md. If you cannot run it, leave this blank.
+      placeholder: Attach file or leave blank.
     validations:
       required: false
 
