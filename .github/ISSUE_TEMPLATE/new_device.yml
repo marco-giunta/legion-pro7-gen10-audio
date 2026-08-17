@@ -1,0 +1,199 @@
+name: New device support request
+description: Request support for a laptop not yet covered by this patch. Please read docs/support_new_laptops.md before opening this issue.
+title: "[NEW DEVICE] <manufacturer> <model>"
+labels: ["new-device"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filling in this form, please follow the verification steps in [docs/support_new_laptops.md](https://github.com/marco-giunta/legion-pro7-gen10-audio/blob/legion_audio/docs/support_new_laptops.md) to confirm your laptop is a candidate for this patch. Issues that skip these steps or provide incomplete information will likely result in multiple rounds of back-and-forth that could have been avoided, delaying support for your device. Please let's try avoiding wasting everyone's time.
+
+  - type: input
+    id: psref_link
+    attributes:
+      label: Lenovo PSref page
+      description: |
+        Link to the PSref page for your laptop model (https://psref.lenovo.com), or equivalent for your website/OEM. The speaker specifications must mention "Smart Amplifier" or similar. If your model is not listed on PSref (e.g. regional variants), explain why below.
+      placeholder: e.g. https://psref.lenovo.com/Product/Legion/Legion_Pro_7_16AFR10H
+    validations:
+      required: true
+
+  - type: input
+    id: psref_speaker_line
+    attributes:
+      label: Speaker specification from PSref
+      description: Copy the exact speaker specification line from the PSref page.
+      placeholder: e.g. "4 stereo speakers, 2W x2 (woofers), 2W x2 (tweeters), optimized with Nahimic Audio, Smart Amplifier (AMP)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acpi_output
+    attributes:
+      label: ACPI table output
+      description: |
+        Run the following command and paste the full output here:
+        ```bash
+        sudo strings /sys/firmware/acpi/tables/DSDT | grep AWDZ8399
+        ```
+        This must return non-empty output for your device to be a candidate.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: acpi_dsdt_output
+    attributes:
+      label: ACPI DSDT device block for AWDZ8399
+      description: |
+        Install the `iasl` package, then run the following commands and paste the full output of the last grep here:
+        ```bash
+        sudo cp /sys/firmware/acpi/tables/DSDT /tmp/dsdt.dat
+        sudo iasl -d /tmp/dsdt.dat
+        grep -B5 -A85 'Name (_HID, "AWDZ8399")' /tmp/dsdt.dsl
+        ```
+        This shows the full ACPI device block including I2C addresses and other properties.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: windows_driver_link
+    attributes:
+      label: Windows audio driver download link
+      description: |
+        Link to the official manufacturer page where you downloaded the Windows audio driver. Must be an official source (e.g. https://pcsupport.lenovo.com or equivalent for your region/OEM).
+      placeholder: e.g. https://pcsupport.lenovo.com/us/en/products/laptops-and-netbooks/legion-series/legion-pro-7-16afr10h/downloads/driver-list/
+    validations:
+      required: true
+
+  - type: input
+    id: firmware_path
+    attributes:
+      label: Path to AWDZ8399.bin inside the extracted Windows driver
+      description: |
+        After running `innoextract` on the Windows audio driver, `cd` into the extracted folder and run: `find . -name "AWDZ8399.bin"`
+        Paste the full relative path reported by `find`.
+      placeholder: e.g. ./Source/6AW883XX/AWDZ8399.bin
+    validations:
+      required: true
+
+  - type: input
+    id: firmware_sha256
+    attributes:
+      label: AWDZ8399.bin sha256 checksum
+      description: |
+        Run the following on the `AWDZ8399.bin` file extracted from the Windows driver and paste the output of: `sha256sum AWDZ8399.bin`.
+        Compare it against [`firmware/aw88399/aw88399_acf.bin.sha256`](https://github.com/marco-giunta/legion-pro7-gen10-audio/blob/legion_audio/firmware/aw88399/aw88399_acf.bin.sha256) and note whether it matches.
+      placeholder: e.g. 1e927c9bca76d868181c0f81df2bccef3cf19c7d0910219f229360c87babd42c AWDZ8399.bin (match / no match)
+    validations:
+      required: true
+
+  - type: input
+    id: manufacturer
+    attributes:
+      label: Laptop manufacturer
+      description: Output of `cat /sys/class/dmi/id/sys_vendor`
+      placeholder: e.g. LENOVO
+    validations:
+      required: true
+
+  - type: input
+    id: product_family
+    attributes:
+      label: Product family
+      description: Output of `cat /sys/class/dmi/id/product_family`
+      placeholder: e.g. Legion Pro 7 16AFR10H
+    validations:
+      required: true
+
+  - type: input
+    id: product_name
+    attributes:
+      label: Product name
+      description: Output of `cat /sys/class/dmi/id/product_name`
+      placeholder: e.g. 83RU
+    validations:
+      required: true
+
+  - type: input
+    id: codec_ssid
+    attributes:
+      label: Codec subsystem ID
+      description: |
+        Output of `grep -l "Codec: Realtek" /proc/asound/card*/codec#* | xargs grep -i "Subsystem Id"`
+      placeholder: |
+        e.g. Subsystem Id: 0x17aa3938
+    validations:
+      required: true
+
+  - type: input
+    id: pci_ssid
+    attributes:
+      label: PCI subsystem ID
+      description: Output of `lspci -vnn | grep -A1 -i audio`. This helps detect collisions where the same PCI ID maps to different codec IDs across device variants.
+      placeholder: |
+        e.g. something containing Subsystem: Lenovo Device [17aa:38c6]
+    validations:
+      required: true
+
+  - type: input
+    id: distro
+    attributes:
+      label: Linux distribution and version
+      placeholder: e.g. Fedora 44
+    validations:
+      required: true
+
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+      description: Output of `uname -r`
+      placeholder: e.g. 7.1.5-200.fc44.x86_64
+    validations:
+      required: true
+
+  - type: textarea
+    id: codec_dump
+    attributes:
+      label: Full Linux audio codec dump
+      description: |
+        Full output of `cat $(grep -l "Codec: Realtek" /proc/asound/card*/codec#*)`.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: mic_test
+    attributes:
+      label: Microphone calibration test results
+      description: |
+        Follow the microphone calibration test in docs/support_new_laptops.md and report:
+        - The OS volume percentages at which each boost level transition (0x00→0x01, 0x01→0x02, 0x02→0x03) occurs
+        - Which levels (if any) produce distorted recordings
+      placeholder: |
+        0x00 -> 0x01 at: ___%
+        0x01 -> 0x02 at: ___%
+        0x02 -> 0x03 at: ___%
+        Distortion observed at levels: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: windows_dump
+    attributes:
+      label: Windows codec dump (optional but helpful)
+      description: Attach the .txt file produced by RtHDDump_V236.exe as described in docs/support_new_laptops.md. If you cannot run it, leave this blank.
+      placeholder: Attach file or leave blank.
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: |
+        Anything else relevant: other hardware quirks, things you have already tried, etc.
+    validations:
+      required: false
