@@ -6,14 +6,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        Before filling in this form, please follow the verification steps in [docs/support_new_laptops.md](https://github.com/marco-giunta/legion-pro7-gen10-audio/blob/legion_audio/docs/support_new_laptops.md) to confirm your laptop is a candidate for this patch. Issues that skip these steps or provide incomplete information will likely result in multiple rounds of back-and-forth that could have been avoided, delaying support for your device. Please let's try avoiding wasting everyone's time.
+        Before filling in this form, please follow the verification steps in [docs/support_new_laptops.md](https://github.com/marco-giunta/legion-pro7-gen10-audio/blob/legion_audio/docs/support_new_laptops.md) to confirm your laptop is a candidate for this patch. Issues that skip these steps or provide incomplete information will likely result in multiple rounds of back-and-forth that could have been avoided, delaying support for your device. Please let's avoid wasting everyone's time.
 
   - type: input
     id: psref_link
     attributes:
-      label: Lenovo PSref page
+      label: Lenovo PSREF page
       description: |
-        Link to the PSref page for your laptop model (https://psref.lenovo.com), or equivalent for your website/OEM. The speaker specifications must mention "Smart Amplifier" or similar. If your model is not listed on PSref (e.g. regional variants), explain why below.
+        Link to the PSREF page for your laptop model (https://psref.lenovo.com), or equivalent for your region/OEM. The speaker specifications must mention "Smart Amplifier" or similar. If your model is not listed on PSREF (e.g. the laptop is exclusive to non-western markets), explain why below.
       placeholder: e.g. https://psref.lenovo.com/Product/Legion/Legion_Pro_7_16AFR10H
     validations:
       required: true
@@ -21,8 +21,8 @@ body:
   - type: input
     id: psref_speaker_line
     attributes:
-      label: Speaker specification from PSref
-      description: Copy the exact speaker specification line from the PSref page.
+      label: Speaker specification from PSREF
+      description: Copy the exact speaker specification line from the PSREF page.
       placeholder: e.g. "4 stereo speakers, 2W x2 (woofers), 2W x2 (tweeters), optimized with Nahimic Audio, Smart Amplifier (AMP)"
     validations:
       required: true
@@ -62,7 +62,7 @@ body:
     attributes:
       label: Windows audio driver download link
       description: |
-        Link to the official manufacturer page where you downloaded the Windows audio driver. Must be an official source (e.g. https://pcsupport.lenovo.com or equivalent for your region/OEM).
+        Link to the official manufacturer page where you downloaded the Windows audio driver. Must be an official source, e.g. https://pcsupport.lenovo.com for western markets, https://newsupport.lenovo.com.cn/ for China, or equivalent for your region/OEM.
       placeholder: e.g. https://pcsupport.lenovo.com/us/en/products/laptops-and-netbooks/legion-series/legion-pro-7-16afr10h/downloads/driver-list/
     validations:
       required: true
@@ -74,7 +74,7 @@ body:
       description: |
         After running `innoextract` on the Windows audio driver, `cd` into the extracted folder and run: `find . -name "AWDZ8399.bin"`
         Paste the full relative path reported by `find`.
-      placeholder: e.g. ./Source/6AW883XX/AWDZ8399.bin
+      placeholder: e.g. ./Source/6AW883XX/AWDZ8399.bin or ./Source/6Awinic_smart_amp_0407/AWDZ8399.bin
     validations:
       required: true
 
@@ -83,11 +83,20 @@ body:
     attributes:
       label: AWDZ8399.bin sha256 checksum
       description: |
-        Run the following on the `AWDZ8399.bin` file extracted from the Windows driver and paste the output of: `sha256sum AWDZ8399.bin`.
-        Compare it against [`firmware/aw88399/aw88399_acf.bin.sha256`](https://github.com/marco-giunta/legion-pro7-gen10-audio/blob/legion_audio/firmware/aw88399/aw88399_acf.bin.sha256) and note whether it matches.
-      placeholder: e.g. 1e927c9bca76d868181c0f81df2bccef3cf19c7d0910219f229360c87babd42c AWDZ8399.bin (match / no match)
+        From the folder containing the `AWDZ8399.bin` file extracted from the Windows driver, run and paste the output of: `sha256sum AWDZ8399.bin`.
+      placeholder: e.g. 1e927c9bca76d868181c0f81df2bccef3cf19c7d0910219f229360c87babd42c AWDZ8399.bin
     validations:
       required: true
+
+  - type: dropdown
+    id: firmware_sha256_comparison
+    attributes:
+      label: AWDZ8399.bin sha256 checksum comparison with existing supported models
+      description: |
+        Compare the sha256 checksum above against [`firmware/aw88399/aw88399_acf.bin.sha256`](https://github.com/marco-giunta/legion-pro7-gen10-audio/blob/legion_audio/firmware/aw88399/aw88399_acf.bin.sha256); do these string match?
+      options:
+        - "Yes"
+        - "No"
 
   - type: input
     id: manufacturer
@@ -150,7 +159,7 @@ body:
     attributes:
       label: Kernel version
       description: Output of `uname -r`
-      placeholder: e.g. 7.1.5-200.fc44.x86_64
+      placeholder: e.g. 7.1.8-200.fc44.x86_64
     validations:
       required: true
 
