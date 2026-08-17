@@ -136,13 +136,14 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: textarea
     id: pci_ssid
     attributes:
       label: PCI subsystem ID
       description: Output of `lspci -vnn | grep -A1 -i audio`. This helps detect collisions where the same PCI ID maps to different codec IDs across device variants.
       placeholder: |
         e.g. something containing Subsystem: Lenovo Device [17aa:38c6]
+      render: text
     validations:
       required: true
 
@@ -181,6 +182,9 @@ body:
         Follow the microphone calibration test in docs/support_new_laptops.md and report:
         - The OS volume percentages at which each boost level transition (0x00→0x01, 0x01→0x02, 0x02→0x03) occurs
         - Which levels (if any) produce distorted recordings
+
+        Please use the format shown in the field below.
+        If there is no distortion at all, even at 100%, you can skip including the values at which the transitions occur; just say there's no distortion at any level.
       placeholder: |
         0x00 -> 0x01 at: ___%
         0x01 -> 0x02 at: ___%
@@ -193,8 +197,9 @@ body:
     id: windows_dump
     attributes:
       label: Windows codec dump (optional but helpful)
-      description: Attach the .txt file produced by RtHDDump_V236.exe as described in docs/support_new_laptops.md. If you cannot run it, leave this blank.
-      placeholder: Attach file or leave blank.
+      description: Copy-paste the contents of the .txt file produced by RtHDDump_V236.exe as described in docs/support_new_laptops.md. If you cannot run it, leave this blank.
+      placeholder: Copy-paste file contents or leave blank.
+      render: text
     validations:
       required: false
 
