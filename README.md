@@ -383,7 +383,7 @@ Go to the [PC support website](https://pcsupport.lenovo.com) (once again, you ma
 ```sh
 innoextract <windows audio driver.exe>
 ```
-This will create a folder called `code$GetExtractPath$`, inside which there will be a `Source` folder. Inside, there *must* be a folder whose name contains the word `Awinic`, and this folder *must* contain a file called `AWDZ8399.bin`.
+This will create a folder called `code$GetExtractPath$`, inside which there will be a `Source` folder. Inside, there *must* be a folder whose name contains the word `Awinic` (or something related to the AW88399 chip, e.g. a string like `AW883XX`), and this folder *must* contain a file called `AWDZ8399.bin`.
 
 The AW88399 requires a model-specific firmware binary (`AWDZ8399.bin`) to initialize. If the Windows audio driver for your laptop does not contain this file, the AW88399 cannot be present, as Windows would have no firmware to load onto it.
 
