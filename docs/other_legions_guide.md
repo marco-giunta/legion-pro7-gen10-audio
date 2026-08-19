@@ -8,6 +8,8 @@ In particular, these models from the Gen 10 family are confirmed to lack smart a
 - Legion 5i/7i 16IAX10
 - Legion Pro 5 16AFR10
 
+*Note on the 7i*: the Legion 7i Gen 10 (16IAX10, DMI 83KY, codec SSID 17aa:392c) is a partial exception to the above. It does have a smart amplifier (Cirrus CS35L56), but unlike the AW88399 its driver and firmware are already upstream. If audio is broken on this model, outdated firmware packages are the most likely cause rather than a missing driver. If audio is broken, rather than simply quiet/lacking bass, see e.g. [this thread](https://forums.linuxmint.com/viewtopic.php?t=455596) to diagnose further.
+
 ## Improving speaker quality with easyeffects
 
 The stock Linux audio for these laptops can sound thin compared to Windows, but this is because the Windows driver applies Nahimic DSP processing by default; it's not because Linux needs a patched kernel driver.

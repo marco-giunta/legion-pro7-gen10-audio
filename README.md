@@ -31,6 +31,10 @@ These models do *not* need a patched kernel, only some software tweaks; see the 
 - Legion Pro 5 Gen 9 (16ADR10) - AMD
 - Legion 5i/7i Gen 10 (16IAX10) - Intel
 
+> *Note on the 7i 16IAX10*: Almost all the models above have no smart amplifier hardware at all (verifiable on [Lenovo's PSREF](https://psref.lenovo.com)), so the patch doesn't apply because there is no dedicated hardware to drive at the kernel level. Furthermore, all these laptops only have 2 speakers, unlike the 4 separate tweeters/woofers pair as the supported Pro 7 models.
+>
+> The Legion 7i 16IAX10 is an exception: while it also has only 2 speakers, it does use a Cirrus CS35L56 smart amp, but its driver and firmware are already upstream. Therefore, though once again no patched kernel is needed, things like outdated firmware packages can break audio beyond what easyeffects can fix; see e.g. [here](https://forums.linuxmint.com/viewtopic.php?t=455596). So if audio is broken (and not simply quiet or lacking bass) you may need to diagnose further.
+
 Other Legion models may also benefit from this patch despite being currently unsupported.
 To determine whether your laptop is a candidate for this driver, see **Step 0** of the manual installation guide or the [**"Will this patch work on other laptops?"**](#will-this-patch-work-on-other-laptops) FAQ. In short, the laptop must have dedicated woofers driven by an AW88399 Smart Amplifier. The FAQ below explains how to verify this using the speaker specifications, ACPI tables, and the official Lenovo Windows audio driver for your machine.
 
