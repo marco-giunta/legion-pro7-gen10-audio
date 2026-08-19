@@ -5,7 +5,7 @@
 > Patched Linux audio drivers for Lenovo Legion Pro 7/7i Gen 10 (AMD & Intel). Includes Fedora RPM packages and installation automation. [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model.
 
 > [!NOTE]
-> **The AW88399 HDA side codec driver has been accepted into the Linux kernel and will ship with kernel 7.3.** Once 7.3 is released, users will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/README.md) for details.
+> **The AW88399 HDA side codec driver has been accepted into the Linux kernel and will ship [starting with kernel 7.3-rc1](https://github.com/torvalds/linux/commit/e5c91aac491def6ab3f90c4cc246e3fcb0f8f058).** Once 7.3 is released, users will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/README.md) for historical info about the upstream submission.
 
 > [!IMPORTANT]
 > **Firmware note:** The firmware file (`aw88399_acf.bin`) is not yet in the `linux-firmware` repository. Even on kernel 7.3, users will need to install it manually. We are actively working with Lenovo and AWINIC to get the firmware submitted upstream for full out-of-the-box support. See [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65#issuecomment-5130273339) for more info.
