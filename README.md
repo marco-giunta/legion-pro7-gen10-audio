@@ -437,13 +437,13 @@ The upstream patches can be viewed on the lore archives:
 
 This project would have never happened without the help of several amazing people. I am personally indebted especially to these awesome people (in approximately chronological order):
 
-- Nadim Kobeissi (@nadimkobeissi): started this project, conducted the initial investigation, organized the bounty effort, and tested on the original 16IAX10H. I am especially thankful to Nadim for trusting me with the keys of this kingdom.
-- Yakov Till (@Lyapsus): wrote the initial working prototype driver that proved the approach and provided the foundation for everything that followed. Without his work, none of this would have been possible. I am also thankful for the fruitful discussions.
-- @philstopford and @gluceri: helped add AMD support, tested volume controls fix, reported the mic calibration issue and tested the fix, and were the first people to test my contributions (and more generally to believe in me).
-- @msteele: reported the second AMD codec SSID early
-- Xia Yun'an (@imitoy): helped add Y9000P support, extensively tested all iterations of the upstream patch series, and is actively helping contact AWINIC for firmware upstream submission
-- Munzir Taha (@munzirtaha): reported the firmware reload bug and SOF/mic profile issues, tested the upstream patch series, and provided consistently detailed diagnostic reports (most eagle-eyed tester ever).
-- @ZephyrSober, @bash-shabash, @tduck1equack: helped add R9000P ADR10 support by reporting the PCI SSID collision and testing the fix
+- Nadim Kobeissi ([@nadimkobeissi](https://github.com/nadimkobeissi)): started this project, conducted the initial investigation, organized the bounty effort, and tested on the original 16IAX10H. I am especially thankful to Nadim for trusting me with the keys of this kingdom.
+- Yakov Till ([@Lyapsus](https://github.com/Lyapsus)): wrote the initial working prototype driver that proved the approach and provided the foundation for everything that followed. Without his work, none of this would have been possible. I am also thankful for the fruitful discussions.
+- [@philstopford](https://github.com/philstopford) and [@gluceri](https://github.com/gluceri): helped add AMD support, tested volume controls fix, reported the mic calibration issue and tested the fix, and were the first people to test my contributions (and more generally to believe in me).
+- [@msteele](https://github.com/msteele): reported the second AMD codec SSID early
+- Xia Yun'an ([@imitoy](https://github.com/imitoy)): helped add Y9000P support, extensively tested all iterations of the upstream patch series, and is actively helping contact AWINIC for firmware upstream submission
+- Munzir Taha ([@munzirtaha](https://github.com/munzirtaha)): reported the firmware reload bug and SOF/mic profile issues, tested the upstream patch series, and provided consistently detailed diagnostic reports (most eagle-eyed tester ever).
+- [@ZephyrSober](https://github.com/ZephyrSober), [@bash-shabash](https://github.com/bash-shabash), [@tduck1equack](https://github.com/tduck1equack): helped add R9000P ADR10 support by reporting the PCI SSID collision and testing the fix
 - Finally, I extend my thanks to everyone who contributed time, energy, logs, codec dumps, money to the bounty, or simply reported their experience (especially those who did so before I joined the project)
 
 If you helped me personally but I forgot to mention you by name, please know it's not for lack of gratitude; this project had many hands, and every contribution mattered. I may simply be misremembering something from the past ~8 months.
