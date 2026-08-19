@@ -96,6 +96,9 @@ curl -fsSL https://raw.githubusercontent.com/marco-giunta/legion-pro7-gen10-audi
 This script will guide you through installing the required firmware, the NVIDIA drivers from the RPM Fusion nonfree repo, and the patched kernel's RPMs.
 If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the "manual installation" section below.
 
+> [!TIP]
+> As with any script you run with elevated privileges, you are encouraged to [read it](scripts/install.sh) before running it. The script is short, commented, and does only what is described above.
+
 After the script is done, reboot; your system should automatically boot the patched kernel. You can confirm this by running `uname -r`; if you see a string containing the word `legion`, you're good to go. Otherwise, reboot your computer and repeatedly press the ESC key during boot to access the grub menu. You'll find an entry labeled `<...>.legion<...>.fc<...>.x86_64`; select it with the up/down keys, then press enter.
 
 ### Manual installation
@@ -304,10 +307,14 @@ Regular Fedora updates won't affect the custom kernel. However, when new kernel 
 ### Where does the firmware come from?
 See the [Firmware Extraction Guide](docs/firmware_extraction.md) for details on how `aw88399_acf.bin` was extracted from the Windows driver, and how you can extract it yourself if you wish to do so.
 
-### How do I know this is safe?
-- All builds are automated via [this GitHub Actions pipeline](.github/workflows/build_kernel.yml); the RPMs available here were *not* uploaded manually by me. You can check the building process in detail by clicking on the *Actions* button at the top of the page, or by clicking [here](https://github.com/marco-giunta/legion-pro7-gen10-audio/actions).
-- Patches are publicly visible in [`patches/`](patches/).
+### How do I know the prebuilt RPMs and install scripts are safe?
+The automated install script downloads and installs prebuilt kernel RPMs from this repository's [releases page](https://github.com/marco-giunta/legion-pro7-gen10-audio/releases). There are several layers of verifiability:
+- The RPMs are built automatically by the [GitHub Actions workflow](.github/workflows/build_kernel.yml) from the patch files in this repository, with a public build log for every release (see [here](https://github.com/marco-giunta/legion-pro7-gen10-audio/actions)). These files were *not* uploaded manually by me, and the workflow that generated them is short and auditable. SHA-256 checksums are generated and verified during installation, so you can confirm the files were not corrupted or tampered with in transit.
+- The install script itself is [readable here](scripts/install.sh). It downloads the RPMs, verifies their checksums, copies the required firmware files to `/lib/firmware`, and sets up the NVIDIA driver builder via RPM Fusion. Piping scripts from the internet directly into a root shell is a pattern I personally find a bit sketchy (despite it being quite common), so I actively encourage you to read the script rather than just taking my word for it. If you prefer, download it first, inspect it, and run it manually. A more official (but also more expensive to maintain) distribution method like a COPR repository was never set up because this repo was always intended as a temporary stopgap until the upstream kernel merge was complete, which has now happened.
+- The kernel patches are publicly visible in [`patches/`](patches/).
 - You can [build the patched kernel yourself](docs/self_compile.md) to verify.
+
+In short: the build process is transparent and auditable, the downloads are checksum-verified, and the script itself is short and readable. You are not being asked to trust a black box.
 
 ### Black screen issues
 If you see a black screen with a cursor or bar in the top left corner after selecting the patched kernel in the GRUB boot menu, the most likely cause is Secure Boot preventing the patched kernel from loading, as it is unsigned (unlike the stock Fedora kernel).
