@@ -444,6 +444,7 @@ This project would have never happened without the help of several amazing peopl
 - Xia Yun'an ([@imitoy](https://github.com/imitoy)): helped add Y9000P support, extensively tested all iterations of the upstream patch series, and is actively helping contact AWINIC for firmware upstream submission
 - Munzir Taha ([@munzirtaha](https://github.com/munzirtaha)): reported the firmware reload bug and SOF/mic profile issues, tested the upstream patch series, and provided consistently detailed diagnostic reports (most eagle-eyed tester ever).
 - [@ZephyrSober](https://github.com/ZephyrSober), [@bash-shabash](https://github.com/bash-shabash), [@tduck1equack](https://github.com/tduck1equack): helped add R9000P ADR10 support by reporting the PCI SSID collision and testing the fix
+- [287433](https://github.com/287433): helped add support for the R9000P ADR10H by reporting its IDs
 - Finally, I extend my thanks to everyone who contributed time, energy, logs, codec dumps, money to the bounty, or simply reported their experience (especially those who did so before I joined the project)
 
 If you helped me personally but I forgot to mention you by name, please know it's not for lack of gratitude; this project had many hands, and every contribution mattered. I may simply be misremembering something from the past ~8 months.
