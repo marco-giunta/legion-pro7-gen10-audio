@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> If you are looking for patches to compile a custom kernel, use the files in [`patches/audio/`](../patches/audio/) instead. The patches here track the upstream submission process and are missing fixes and device IDs added after v2 was accepted, including support for the R9000P ADR10H, headset button support, spurious 4.0 profile suppression, internal microphone availability fix with headphones plugged in, and several code cleanups. The `patches/audio/` folder always contains the most up-to-date combined patch for each supported kernel version.
+
 # Folder structure
 
 - `series/`: Individual iterations of the patch series (see changelog below). Each subfolder (e.g. `v0.1/`, `v0.2/`) contains the multi-file patch set for that version (including commit messages and cover letters).
