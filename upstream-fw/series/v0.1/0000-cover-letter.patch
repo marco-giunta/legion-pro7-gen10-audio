@@ -1,0 +1,40 @@
+From 070208a12f9e266ba656d3518caaf449a34df338 Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Wed, 26 Aug 2026 23:45:30 +0200
+Subject: [PATCH 0/2] ALSA: hda: aw88399: Add per-model firmware loading
+
+The AW88399 HDA side codec driver currently requests firmware
+using the same hardcoded generic filename ("aw88399_acf.bin")
+as the ASoC driver it was derived from.
+This requires users to manually extract the firmware from the
+Windows driver, rename it suitably, and place it in /lib/firmware.
+This is not sustainable for distribution packaging.
+
+This series adds support for per-model firmware filenames
+based on the ACPI subsystem ID (e.g. "awinic/aw88399_acf_17aa3938.bin"),
+making the driver compatible with the linux-firmware repository's
+per-device naming convention.
+Firmware submission to linux-firmware is in progress with AWINIC
+and Lenovo.
+
+Patch 1 adds a name parameter to the shared firmware request function
+so callers can specify the filename.
+
+Patch 2 uses the ACPI subsystem ID to construct model-specific firmware
+names in the HDA driver.
+
+Marco Giunta (2):
+  ASoC: aw88399: pass firmware name as argument
+  ALSA: hda: aw88399: use SSID-specific firmware name
+
+ include/sound/aw88399.h                    |  2 +-
+ sound/hda/codecs/side-codecs/aw88399_hda.c | 17 +++++++++++++++--
+ sound/soc/codecs/aw88399-lib.c             | 14 +++++++-------
+ sound/soc/codecs/aw88399.c                 |  2 +-
+ 4 files changed, 24 insertions(+), 11 deletions(-)
+
+
+base-commit: 282222edb8487e0d064ab65766865c2d8e08a9be
+-- 
+2.55.0
+

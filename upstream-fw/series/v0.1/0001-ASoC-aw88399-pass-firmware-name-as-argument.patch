@@ -1,0 +1,117 @@
+From 7e8c52ea2ae69b55f6056c24d2bfd1fa0bbc0f46 Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Wed, 26 Aug 2026 23:21:15 +0200
+Subject: [PATCH 1/2] ASoC: aw88399: pass firmware name as argument
+
+Pass the ACF firmware filename as an argument to
+aw88399_request_firmware_file() instead of hardcoding
+AW88399_ACF_FILE. Both existing callers (ASoC and HDA) pass
+AW88399_ACF_FILE to preserve current behavior.
+
+Promote the successful firmware load message from dev_dbg to
+dev_info, as the filename is now caller-specified and useful
+for diagnostics. Improve clarity of the error messages and
+add missing newlines.
+
+This allows the HDA side codec driver to request per-model
+firmware files in the next patch.
+
+Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
+---
+ include/sound/aw88399.h                    |  2 +-
+ sound/hda/codecs/side-codecs/aw88399_hda.c |  2 +-
+ sound/soc/codecs/aw88399-lib.c             | 14 +++++++-------
+ sound/soc/codecs/aw88399.c                 |  2 +-
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/include/sound/aw88399.h b/include/sound/aw88399.h
+index a1e0de6be8ea..fd3e3edfc4ce 100644
+--- a/include/sound/aw88399.h
++++ b/include/sound/aw88399.h
+@@ -613,7 +613,7 @@ void aw88399_dev_set_channel(struct aw88399 *aw88399, int channel);
+ void aw88399_hw_reset(struct aw88399 *aw88399);
+ int aw88399_init(struct aw88399 *aw88399, struct i2c_client *i2c, struct regmap *regmap);
+ extern const struct regmap_config aw88399_remap_config;
+-int aw88399_request_firmware_file(struct aw88399 *aw88399);
++int aw88399_request_firmware_file(struct aw88399 *aw88399, const char *fw_name);
+ void aw88399_start(struct aw88399 *aw88399, bool sync_start);
+ void aw88399_startup_work(struct work_struct *work);
+ int aw88399_stop(struct aw_device *aw_dev);
+diff --git a/sound/hda/codecs/side-codecs/aw88399_hda.c b/sound/hda/codecs/side-codecs/aw88399_hda.c
+index 11cef4923024..74ec9b683302 100644
+--- a/sound/hda/codecs/side-codecs/aw88399_hda.c
++++ b/sound/hda/codecs/side-codecs/aw88399_hda.c
+@@ -130,7 +130,7 @@ static int aw88399_hda_init(struct aw88399_hda *aw88399)
+ 	if (core->aw_pa)
+ 		aw88399_dev_set_channel(core, aw88399->channel);
+ 
+-	ret = aw88399_request_firmware_file(core);
++	ret = aw88399_request_firmware_file(core, AW88399_ACF_FILE);
+ 	if (ret)
+ 		return ret;
+ 
+diff --git a/sound/soc/codecs/aw88399-lib.c b/sound/soc/codecs/aw88399-lib.c
+index 809c2faa0c0c..5203d4eb766e 100644
+--- a/sound/soc/codecs/aw88399-lib.c
++++ b/sound/soc/codecs/aw88399-lib.c
+@@ -1280,21 +1280,21 @@ static int aw88399_dev_init(struct aw88399 *aw88399, struct aw_container *aw_cfg
+ 	return 0;
+ }
+ 
+-int aw88399_request_firmware_file(struct aw88399 *aw88399)
++int aw88399_request_firmware_file(struct aw88399 *aw88399, const char *fw_name)
+ {
+ 	const struct firmware *cont __free(firmware) = NULL;
+ 	int ret;
+ 
+ 	aw88399->aw_pa->fw_status = AW88399_DEV_FW_FAILED;
+ 
+-	ret = request_firmware(&cont, AW88399_ACF_FILE, aw88399->aw_pa->dev);
++	ret = request_firmware(&cont, fw_name, aw88399->aw_pa->dev);
+ 	if (ret) {
+-		dev_err(aw88399->aw_pa->dev, "request [%s] failed!", AW88399_ACF_FILE);
++		dev_err(aw88399->aw_pa->dev, "Failed to request firmware %s\n", fw_name);
+ 		return ret;
+ 	}
+ 
+-	dev_dbg(aw88399->aw_pa->dev, "loaded %s - size: %zu\n",
+-			AW88399_ACF_FILE, cont ? cont->size : 0);
++	dev_info(aw88399->aw_pa->dev, "Loaded firmware %s\n", fw_name);
++	dev_dbg(aw88399->aw_pa->dev, "Firmware size: %zu\n", cont ? cont->size : 0);
+ 
+ 	aw88399->aw_cfg = devm_kzalloc(aw88399->aw_pa->dev,
+ 			struct_size(aw88399->aw_cfg, data, cont->size), GFP_KERNEL);
+@@ -1306,7 +1306,7 @@ int aw88399_request_firmware_file(struct aw88399 *aw88399)
+ 
+ 	ret = aw88395_dev_load_acf_check(aw88399->aw_pa, aw88399->aw_cfg);
+ 	if (ret) {
+-		dev_err(aw88399->aw_pa->dev, "load [%s] failed!", AW88399_ACF_FILE);
++		dev_err(aw88399->aw_pa->dev, "Failed to validate firmware %s\n", fw_name);
+ 		return ret;
+ 	}
+ 
+@@ -1314,7 +1314,7 @@ int aw88399_request_firmware_file(struct aw88399 *aw88399)
+ 	/* aw device init */
+ 	ret = aw88399_dev_init(aw88399, aw88399->aw_cfg);
+ 	if (ret)
+-		dev_err(aw88399->aw_pa->dev, "dev init failed");
++		dev_err(aw88399->aw_pa->dev, "Failed to initialize device from firmware\n");
+ 	mutex_unlock(&aw88399->lock);
+ 
+ 	return ret;
+diff --git a/sound/soc/codecs/aw88399.c b/sound/soc/codecs/aw88399.c
+index e9dab5e7bae3..320dc1b87841 100644
+--- a/sound/soc/codecs/aw88399.c
++++ b/sound/soc/codecs/aw88399.c
+@@ -727,7 +727,7 @@ static int aw88399_codec_probe(struct snd_soc_component *component)
+ 
+ 	INIT_DELAYED_WORK(&aw88399->start_work, aw88399_startup_work);
+ 
+-	ret = aw88399_request_firmware_file(aw88399);
++	ret = aw88399_request_firmware_file(aw88399, AW88399_ACF_FILE);
+ 	if (ret)
+ 		dev_err(aw88399->aw_pa->dev, "%s failed\n", __func__);
+ 
+-- 
+2.55.0
+
