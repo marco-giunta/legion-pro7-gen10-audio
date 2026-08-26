@@ -8,7 +8,8 @@ Specifically, Mark Pearson from Lenovo's Linux team confirmed that AWINIC has Le
 
 In the meantime, this folder contains a follow-up kernel patch series that adds per-model firmware file naming to the AW88399 HDA side codec driver, making it compatible with the `linux-firmware` repository's per-device naming convention.
 
-**Note:** The firmware file naming convention adopted in this series (`awinic/aw88399_acf_<ssid>.bin`) is a proposal based on existing `linux-firmware` conventions and is subject to change pending agreement with AWINIC. From a testing perspective this doesn't matter; the convention is trivial to adjust in the driver code.
+> [!NOTE]
+> The firmware file naming convention adopted in this series (`awinic/aw88399_acf_<ssid>.bin`) is a proposal based on existing `linux-firmware` conventions and is subject to change pending agreement with AWINIC. From a testing perspective this doesn't matter; the convention is trivial to adjust in the driver code.
 
 ## Folder structure
 
