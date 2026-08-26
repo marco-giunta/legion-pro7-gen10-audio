@@ -45,16 +45,19 @@ The series currently consists of 2 patches:
    aw88399-hda i2c-AWDZ8399:00-aw88399-hda.0: Applying properties for SSID 17AA3938
    ```
 
-   The SSID in this example is `17AA3938`.
+   The SSID in this example is `17AA3938`. 
+   
+> [!TIP]
+> It is important to determine the exact SSID for your laptop, as each supported model can have one of two possible values depending on the board revision (see main README). Therefore, it is not possible to know in advance which SSID applies to a particular device.
 
-2. **Copy and rename the firmware file.** Create the `awinic/` directory under `/lib/firmware/` and copy your existing firmware file with the SSID-specific name (in lowercase):
+2. **Copy and rename the firmware file.** Create the `awinic/` directory under `/lib/firmware/` and copy your existing firmware file with the SSID-specific name *in lowercase*:
 
    ```bash
    sudo mkdir -p /lib/firmware/awinic
    sudo cp /lib/firmware/aw88399_acf.bin /lib/firmware/awinic/aw88399_acf_17aa3938.bin
    ```
 
-   Replace `17aa3938` with your own SSID *in lowercase*.
+   Replace `17aa3938` with your own SSID.
 
 3. **Apply the patch and rebuild the kernel.** Follow the same process you used to install the original patched kernel, but using the combined patch from this folder instead.
 
