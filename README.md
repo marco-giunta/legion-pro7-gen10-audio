@@ -23,6 +23,14 @@ This repository provides kernel patches and pre-built RPM packages for the model
 - Lenovo Legion R9000P 2025 (ADR10) - AMD
 - Lenovo Legion R9000P 2025 (ADR10H) - AMD
 
+**Models potentially supported**
+- Legion R9000P (AFR10) - shares a BIOS update package with the supported Legion Pro 7 16AFR10H
+- Legion Y9000P (IAX10H) - shares a BIOS update package with the supported Legion Pro 7i 16IAX10H / Y9000P IAX10
+
+If you own one of these models and your woofers are broken on Linux, you are likely a candidate for this patch. Please open an issue using the ["support new laptops" guide](/docs/support_new_laptops.md).
+
+If you try the current patch and it already works out of the box, please let me know via an issue. This would mean your device shares codec/ACPI SSIDs with an already supported one, which would be useful to share to make the documentation more accurate.
+
 **Other models with separate, simpler fixes**
 
 These models do *not* need a patched kernel, only some software tweaks; see the ["Other Legions" guide](docs/other_legions_guide.md).
