@@ -420,7 +420,12 @@ Only when **all three** checks agree should the laptop be considered a candidate
 If your laptop passes all the above checks, please open an issue using [this guide](docs/support_new_laptops.md).
 If instead any of the checks fail, this patch almost certainly does not apply to your laptop.
 
-I can then try adding support for your device by adding its ID, but be aware that more work than this may be needed. To be more precise: adding the ID may not be enough, as the Legion Pro 7 models currently supported by this patch also require specific tweaks regarding the realtek codec side, and other fixes may apply to your model. The guide linked above contains informations to collect diagnostics on whether the same quirks apply or not.
+I can then try adding support for your device by adding its ID, but be aware that more work than this may be needed. To be more precise: adding the ID may not be enough, as the Legion Pro 7 models currently supported by this patch also require specific tweaks regarding both the realtek and awinic codec sides, and other fixes may apply to your model. The guide linked above contains information to collect diagnostics on whether the same quirks apply or not.
+
+> [!NOTE]
+> The driver is structured to make it possible to extend support beyond the currently known hardware configurations. For example, a future device might use the AW88399 over SPI rather than I2C, use additional AW88399 addresses to drive the tweeters as well as the woofers, or require new codec quirks. Supporting these configurations would be more substantial changes than simply adding another ID, and would make for interesting future work.
+>
+> If your diagnostics reveal an AW88399 configuration that doesn't quite match the ones described here, please open an issue anyway. In particular, the relevant details can often be visible in the ACPI tables and codec dumps, so don't assume that a different hardware configuration means the device cannot be supported. I'd be very happy to investigate and, if feasible, extend the driver and submit the changes upstream.
 
 ---
 ## Credits
@@ -457,7 +462,7 @@ This project would have never happened without the help of several amazing peopl
 
 If you helped me personally but I forgot to mention you by name, please know it's not for lack of gratitude; this project had many hands, and every contribution mattered. I may simply be misremembering something from the past ~8 months.
 
-It's been an amazing journey; I learned a lot, got to meet and collaborate with many wonderful people, and I'm grateful to everyone who made it possible. If in the future we need to fix something or add support for new devices, please don't hesitate to contact me. In the meantime, I will keep supporting the combined patch for kernels 7.1 and 7.2 until 7.3 ships with the driver built in.
+It's been an amazing journey; I learned a lot, got to meet and collaborate with many wonderful people, and I'm grateful to everyone who made it possible. If in the future we need to fix something, add support for new devices, or extend the driver to new hardware configurations, please don't hesitate to contact me. In the meantime, I will keep supporting the combined patch for kernels 7.1 and 7.2 until 7.3 ships with the driver built in.
 
 <details>
 <summary>Original credits from Nadim Kobeissi's repository</summary>
