@@ -1,6 +1,6 @@
 # How to open an issue to add support for new IDs
 
-If your laptop passes the three checks described in the README, open an issue by collecting the required diagnostics using the steps below and the [new device issue template](https://github.com/marco-giunta/legion-pro7-gen10-audio/issues/new?template=new_device.yml).
+If your laptop passes [the three checks described in the README](../README.md#will-this-patch-work-on-other-laptops), open an issue by collecting the required diagnostics using the steps below and the [new device issue template](https://github.com/marco-giunta/legion-pro7-gen10-audio/issues/new?template=new_device.yml).
 
 I can then try adding support for your machine by including its codec ID, and any other extra quirks that may be needed.
 
