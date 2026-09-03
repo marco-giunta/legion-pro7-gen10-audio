@@ -142,7 +142,7 @@ If all checks pass, please open an issue following the instructions from the ["s
 Similarly, if you don't get a matching codec SSID *and* your laptop is a model other than one of the supported ones, perform the same basic diagnostics before opening an issue with the same "support new laptops" guide. If you own a Legion 5i/7i 16IAX10, a Legion Pro 5i 16IAX10H, or a Legion Pro 5 16AFR10/16ADR10, you don't need a patched kernel at all; see the [audio guide for other Legion models](docs/other_legions_guide.md).
 
 1. **Install the firmware**
-- Download the [`aw88399_acf.bin` file](firmware/aw88399/aw88399_acf.bin); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in the [firmware extraction guide](docs/firmware_extraction.md).
+- Download the [`aw88399_acf.bin` file](firmware/aw88399/aw88399_acf.bin); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in [this section](#step-3-verify-the-windows-audio-driver-contains-the-aw88399-firmware-binary).
 - *Optional but recommended:* Download the [`aw88399_acf.bin.sha256`](firmware/aw88399/aw88399_acf.bin.sha256) file, put it in the same folder as the downloaded `aw88399_acf.bin`, and check the integrity of the binary:
 ```bash
 # run this in the folder containing both the .bin and the .bin.sha256 files
@@ -314,7 +314,7 @@ Keep in mind that `dnf` prevents the user from removing the kernel currently in 
 Regular Fedora updates won't affect the custom kernel. However, when new kernel versions are released, you may want to install updated versions from this repository for the latest features and security fixes.
 
 ### Where does the firmware come from?
-See the [Firmware Extraction Guide](docs/firmware_extraction.md) for details on how `aw88399_acf.bin` was extracted from the Windows driver, and how you can extract it yourself if you wish to do so.
+See [this section](#step-3-verify-the-windows-audio-driver-contains-the-aw88399-firmware-binary) for details on how `aw88399_acf.bin` was extracted from the Windows driver, and how you can extract it yourself if you wish to do so.
 
 ### How do I know the prebuilt RPMs and install scripts are safe?
 The automated install script downloads and installs prebuilt kernel RPMs from this repository's [releases page](https://github.com/marco-giunta/legion-pro7-gen10-audio/releases). There are several layers of verifiability:
