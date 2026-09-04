@@ -299,3 +299,6 @@ sudo mokutil --import /etc/pki/akmods/certs/public_key.der
 ```
 
 then enter a password, reboot, and enroll the certificate using that password in the MOK manager as done previously.
+
+> [!NOTE]
+> If you don't dual boot Windows on the Legion Pro 7/7i, you can use [this script](https://github.com/nadimkobeissi/lenovo-bios-fwupd/) to update the BIOS from Linux. I haven't tested what happens in this case, but it's quite likely that the same re-enrollment process described above applies.
