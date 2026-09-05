@@ -56,12 +56,13 @@ To determine whether your laptop is a candidate for this driver, see **Step 0** 
 More detailed credits are available at the bottom of this page.
 
 **What's new in this fork:**
-- **Full AMD platform support** (16AFR10H)
 - **Automated Fedora RPM builds** via GitHub Actions
 - **Installation wizards** and automation scripts
 - **Comprehensive self-compile guide** for Fedora
 - **[mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms)** to enable Wi-Fi and Bluetooth on the AMD model
 - **easyeffects profiles** to restore some Windows-like features
+
+The actual patch development is now shared between this fork and the original repo, as I now maintain both.
 
 ***AI disclaimer:*** Especially in the earlier stages of this project, I relied on claude.ai for help with things I didn't fully understand; as I learned more about Linux and audio, I became more confident and less reliant on those tools. I can attest that ***all the code I added to the original patch was written by me, based on existing Linux code and documentation*** (see e.g. [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/30#issuecomment-4176726805) and [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/55)). Likewise, ***the guides and tools in this repo were written and tested by me, based on official Fedora documentation***.
 I still use AI for brainstorming or assistance with bugs; for example, Claude helped me fix or improve some parts of the GitHub Actions pipeline and the install script. These changes were limited to bugfixes or minor improvements; the overall logic and design are my own. Most importantly, it had no role in writing the actual kernel patch code.
@@ -424,7 +425,7 @@ If instead any of the checks fail, this patch almost certainly does not apply to
 I can then try adding support for your device by adding its ID, but be aware that more work than this may be needed. To be more precise: adding the ID may not be enough, as the Legion Pro 7 models currently supported by this patch also require specific tweaks regarding both the realtek and awinic codec sides, and other fixes may apply to your model. The guide linked above contains information to collect diagnostics on whether the same quirks apply or not.
 
 > [!NOTE]
-> The driver is structured to make it possible to extend support beyond the currently known hardware configurations. For example, a future device might uuse additional AW88399 addresses to drive more than 2 woofers, or require new codec quirks. Supporting these configurations would be more substantial changes than simply adding another ID, and would make for interesting future work.
+> The driver is structured to make it possible to extend support beyond the currently known hardware configurations. For example, a future device might use additional AW88399 addresses to drive more than 2 woofers, or require new codec quirks. Supporting these configurations would be more substantial changes than simply adding another ID, and would make for interesting future work.
 >
 > Therefore, if your diagnostics reveal an AW88399 configuration that doesn't quite match the ones described here, please open an issue anyway. In particular, the relevant details can often be visible in the ACPI tables and codec dumps, so don't assume that a slightly different hardware configuration means the device cannot be supported. I'd be happy to investigate and, if feasible, extend the driver and submit the changes upstream.
 
@@ -437,7 +438,7 @@ This project would not exist without the contributions of many people.
 
 The original Intel audio driver work was done by **Yakov Till (Lyapsus)** and **Nadim Kobeissi** at [nadimkobeissi/16iax10h-linux-sound-saga](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga). Lyapsus wrote the initial working prototype that proved the HDA side codec approach, and Nadim organized the bounty effort that brought the community together.
 
-Building on their work, I (**Marco Giunta**) reworked the patch into an upstream-ready driver: porting to the AMD platform, extracting a shared library from the existing ASoC driver, fixing volume controls via DAC rerouting, fixing internal mic calibration, adding per-model quirk infrastructure with ACPI subsystem ID matching, removing unused code, and navigating the upstream submission process through to acceptance into the Linux kernel by multiple maintainers.
+Building on their work, I (**Marco Giunta**) reworked the patch into an upstream-ready driver: porting to the AMD platform (by fixing volume controls at the correct legacy HDA kernel level, replacing the original Intel-only forced SOF mode + userspace pipewire workarounds), extracting a shared library from the existing ASoC driver, fixing volume controls via DAC rerouting, fixing internal mic calibration, adding per-model quirk infrastructure with ACPI subsystem ID matching, removing unused code, and navigating the upstream submission process through to acceptance into the Linux kernel by multiple maintainers.
 
 Regarding userspace level, I explored the cause of the bleeding jack issue by reverse engineering parts of the Windows driver, built Fedora-specific automation tools for this repo specifically, and wrote extensive documentation for this repo as well as Nadim's.
 
