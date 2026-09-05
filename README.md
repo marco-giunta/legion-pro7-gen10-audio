@@ -24,13 +24,20 @@ This repository provides kernel patches and pre-built RPM packages for the model
 - Lenovo Legion R9000P 2025 (ADR10H) - AMD
 
 **Models potentially supported**
-- Legion R9000P (AFR10) - shares a BIOS update package with the supported Legion Pro 7 16AFR10H
-- Legion Y9000P (IAX10H) - shares a BIOS update package with the supported Legion Pro 7i 16IAX10H / Y9000P IAX10
-- Legion Pro 7 (16ADR10H) - shares the same Windows audio driver package as the supported Legion Pro 7 16AFR10H, including an identical `AWDZ8399.bin` firmware file
+- Legion R9000P (AFR10) - shares a BIOS update package with the supported Legion Pro 7 16AFR10H, and its Windows audio driver includes the `AWDZ8399.bin` firmware
+- Legion R9000P (AFR10H) - shares Windows audio driver with the above
+- Legion Y9000P (IAX10H) - shares a BIOS update package with the supported Legion Pro 7i 16IAX10H / Y9000P IAX10, and its Windows audio driver includes the awinic firmware
+- Legion Pro 7 Gen 9 (16ADR10H) - shares the same Windows audio driver package as the supported Legion Pro 7 16AFR10H, including an identical `AWDZ8399.bin` firmware file
 
 If you own one of these models and your woofers are broken on Linux, you are likely a candidate for this patch. Please verify that your laptop passes the checks described [in this section](#will-this-patch-work-on-other-laptops), then open an issue using the ["support new laptops" guide](/docs/support_new_laptops.md).
 
-If you try the current patch and it already works out of the box, please let me know via an issue. This would mean your device shares codec/ACPI SSIDs with an already supported one, which would be useful to share to make the documentation more accurate.
+It's possible that some of these laptops share codec/ACPI SSIDs with the already supported Legions, in which case the current patch would already work out of the box. Knowing about this would be useful to make the documentation more accurate.
+In this case, *while running the patched kernel from this repo or kernel 7.3-rc1+ and the firmware correctly installed*, please open an issue stating that audio works and the output of these commands:
+```sh
+sudo dmesg | grep -Ei "aw88399|AWDZ8399|alc269"
+cat /sys/class/dmi/id/product_family
+cat /sys/class/dmi/id/product_name
+```
 
 **Other models with separate, simpler fixes**
 
