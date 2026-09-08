@@ -1,0 +1,5 @@
+# This file is intentionally empty.
+# The MT7927 WiFi driver was merged upstream in kernel 7.2 and the BT driver
+# in kernel 7.1.1. For kernels >= 7.2, no out-of-tree MT7927 patches are needed.
+# This placeholder preserves the build script logic in
+# .github/workflows/build_kernel.yml, which expects a mediatek patch file to exist.
