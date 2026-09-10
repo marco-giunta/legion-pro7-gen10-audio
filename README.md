@@ -111,7 +111,7 @@ curl -fsSL https://raw.githubusercontent.com/marco-giunta/legion-pro7-gen10-audi
 ```
 
 This script will guide you through installing the required firmware, the NVIDIA drivers from the RPM Fusion nonfree repo, and the patched kernel's RPMs.
-If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the "manual installation" section below.
+If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the ["manual installation"](#manual-installation) section below.
 
 > [!TIP]
 > As with any script you run with elevated privileges, you are encouraged to [read it](scripts/install.sh) before running it. The script is short, commented, and does only what is described above.
@@ -310,7 +310,7 @@ No. The original kernel remains installed unless you manually remove it, *which 
 ### How do I update to a newer kernel version?
 Simply re-run the install script; it will automatically download and install the latest kernel built by GitHub Actions, while skipping the pre- and post- install steps that have been already completed.
 
-Alternatively, download and extract the updated tarball, then run the same `dnf install --nogpgcheck` command detailed in the "manual install" section above; anything else (like installing the firmware, installing the NVIDIA package, and setting the correct audio profile) has to be done only once, no need to repeat those steps.
+Alternatively, download and extract the updated tarball, then run the same `dnf install --nogpgcheck` command detailed in the ["manual installation"](#manual-installation) section above; anything else (like installing the firmware, installing the NVIDIA package, and setting the correct audio profile) has to be done only once, no need to repeat those steps.
 
 ### How do I remove an older version of the patched kernel?
 The recommended way to uninstall old kernel builds is to do nothing at all: by default, Fedora keeps around three kernels as fallback, so when you install a new one, the oldest will be removed.
