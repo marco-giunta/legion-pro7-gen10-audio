@@ -1,0 +1,52 @@
+From c159e7f62c0c9208a534e6eeaae081ff7bd84166 Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Fri, 11 Sep 2026 18:08:10 +0200
+Subject: [PATCH 2/2] ALSA: hda: aw88399: use SSID-specific firmware name
+
+Use the ACPI subsystem ID to construct per-model firmware filename
+(e.g. "awinic/aw88399_acf_17aa3938.bin") when loading firmware on HDA
+systems. This makes the driver compatible with the linux-firmware
+repository's per-device naming convention.
+
+Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
+---
+ sound/hda/codecs/side-codecs/aw88399_hda.c | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/sound/hda/codecs/side-codecs/aw88399_hda.c b/sound/hda/codecs/side-codecs/aw88399_hda.c
+index 74ec9b683302..6b5ed6bd31d0 100644
+--- a/sound/hda/codecs/side-codecs/aw88399_hda.c
++++ b/sound/hda/codecs/side-codecs/aw88399_hda.c
+@@ -130,10 +130,22 @@ static int aw88399_hda_init(struct aw88399_hda *aw88399)
+ 	if (core->aw_pa)
+ 		aw88399_dev_set_channel(core, aw88399->channel);
+ 
+-	ret = aw88399_request_firmware_file(core, AW88399_ACF_FILE);
++	if (!aw88399->acpi_subsystem_id) {
++		dev_err(dev, "Cannot load firmware: ACPI subsystem ID not available\n");
++		return -ENODEV;
++	}
++
++	char *fw_name __free(kfree) =
++		kasprintf(GFP_KERNEL, "awinic/aw88399_acf_%s.bin", aw88399->acpi_subsystem_id);
++	if (!fw_name)
++		return -ENOMEM;
++	string_lower(fw_name, fw_name);
++	ret = aw88399_request_firmware_file(core, fw_name);
+ 	if (ret)
+ 		return ret;
+ 
++	dev_info(dev, "Loaded firmware %s\n", fw_name);
++
+ 	aw88399->core = core;
+ 	aw88399->aw_dev = core->aw_pa;
+ 
+@@ -370,4 +382,4 @@ MODULE_DESCRIPTION("AW88399 HDA driver");
+ MODULE_AUTHOR("Yakov Till <yakov.till@gmail.com>");
+ MODULE_AUTHOR("Marco Giunta <marco_giunta@outlook.it>");
+ MODULE_LICENSE("GPL");
+-MODULE_FIRMWARE("aw88399_acf.bin");
++MODULE_FIRMWARE("awinic/aw88399_acf_*.bin");
+-- 
+2.55.0
+

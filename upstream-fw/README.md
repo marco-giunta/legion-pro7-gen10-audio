@@ -20,7 +20,7 @@ In the meantime, this folder contains a follow-up kernel patch series that adds 
 
 The series currently consists of 2 patches:
 
-1. **ASoC: aw88399: pass firmware name as argument**: modifies the shared library's `aw88399_request_firmware_file()` to accept the firmware filename as a parameter instead of using the hardcoded `AW88399_ACF_FILE` constant (`"aw88399_acf.bin"`). Both existing callers (ASoC and HDA) pass `AW88399_ACF_FILE` to preserve current behavior. Also cleans up error/diagnostic messages in the function.
+1. **ASoC: aw88399: pass firmware name as argument**: modifies the shared library's `aw88399_request_firmware_file()` to accept the firmware filename as a parameter instead of using the hardcoded `AW88399_ACF_FILE` constant (`"aw88399_acf.bin"`). Both existing callers (ASoC and HDA) pass `AW88399_ACF_FILE` to preserve current behavior.
 
 2. **ALSA: hda: aw88399: use SSID-specific firmware name**: modifies the HDA side codec driver to construct a per-model firmware filename using the ACPI subsystem ID (e.g. `"awinic/aw88399_acf_17aa3938.bin"`) instead of the generic `"aw88399_acf.bin"`.
 
@@ -81,6 +81,13 @@ A dedicated tracking issue will be opened on [nadimkobeissi/16iax10h-linux-sound
 once the firmware submission is further along. In the meantime, if you've tested this and want to share results, provide feedback on the code, or give me your Tested-by tag beforehand, feel free to email me directly (address in the git commits).
 
 ## Changelog
+
+### v0.2
+- Removed the ASoC error log cleanups, as they would be better submitted as part of a separate series. Here they conflate unrelated stuff. Only the addition of the missing newlines is left in.
+- Moved the successful firmware loading log to the HDA driver where it belongs (the ASoC firmware behavior is unchanged, so there is no reason to promote its `dev_dbg` into `dev_info` as well).
+- Removed the separate `kfree` call in favor of an automated cleanup via `__free(kfree)`.
+- Slightly reworded the cover letter and commit messages.
+- Rebased on commit `41df0a8ef1b8c80b57f8fcb55ae4ee4e6378cb62` from `tiwai/sound`.
 
 ### v0.1
 
