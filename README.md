@@ -56,9 +56,11 @@ To determine whether your laptop is a candidate for this driver, see **Step 0** 
 
 **Credits & Attributions**
 
-*Audio patch*: This work builds upon the [original Intel audio fix](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga) by **Lyapsus**, **Nadim Kobeissi**, and contributors. Their incredible work made this project possible.
+- *Audio patch*: This work builds upon the [original Intel audio fix](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga) by **Lyapsus**, **Nadim Kobeissi**, and contributors. Their incredible work made this project possible.
 
-*mt7927 patch*: all credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms).
+- *mt7927 patch*: all credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms).
+
+- *Smart Connect key & Camera Privacy switch fixes*: [these are all mine](patches/extras/).
 
 More detailed credits are available at the bottom of this page.
 
@@ -68,8 +70,9 @@ More detailed credits are available at the bottom of this page.
 - **Comprehensive self-compile guide** for Fedora
 - **[mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms)** to enable Wi-Fi and Bluetooth on the AMD model
 - **easyeffects profiles** to restore some Windows-like features
+- **[extra patches](patches/extras/)** to allow for correct remapping of the Smart Connect (F11) key, without interference from the camera privacy switch
 
-The actual patch development is now shared between this fork and the original repo, as I now maintain both.
+The actual AW88399 patch development is now shared between this fork and the original repo, as I now maintain both.
 
 ***AI disclaimer:*** Especially in the earlier stages of this project, I relied on claude.ai for help with things I didn't fully understand; as I learned more about Linux and audio, I became more confident and less reliant on those tools. I can attest that ***all the code I added to the original patch was written by me, based on existing Linux code and documentation*** (see e.g. [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/30#issuecomment-4176726805) and [here](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/55)). Likewise, ***the guides and tools in this repo were written and tested by me, based on official Fedora documentation***.
 I still use AI for brainstorming or assistance with bugs; for example, Claude helped me fix or improve some parts of the GitHub Actions pipeline and the install script. These changes were limited to bugfixes or minor improvements; the overall logic and design are my own. Most importantly, it had no role in writing the actual kernel patch code.
@@ -112,6 +115,9 @@ curl -fsSL https://raw.githubusercontent.com/marco-giunta/legion-pro7-gen10-audi
 
 This script will guide you through installing the required firmware, the NVIDIA drivers from the RPM Fusion nonfree repo, and the patched kernel's RPMs.
 If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the ["manual installation"](#manual-installation) section below.
+
+> [!IMPORTANT]
+> Beyond the audio and WiFi/BT fixes, the prebuilt RPMs also include patches for other Legion-specific kernel behavior that are pending upstream inclusion or have yet to reach the stable kernel. See [`patches/extras/README.md`](patches/extras/README.md) for details on what is included and why, including workarounds for remapping the Smart Connect key (F11) and fixing the camera privacy switch under Linux.
 
 > [!TIP]
 > As with any script you run with elevated privileges, you are encouraged to [read it](scripts/install.sh) before running it. The script is short, commented, and does only what is described above.
