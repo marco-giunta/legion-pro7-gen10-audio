@@ -63,7 +63,14 @@ This will install a large number of packages. If you wish to remove these in the
 
 ## Step 3: Configure the build process
 ### Copying the patch
-Inside the `kernel` folder, locate and open the file called `linux-kernel-test.patch`; copy paste here the contents of the relevant `.patch` file downloaded from this repo, based on the kernel version you downloaded using `fedpkg`/`koji`. If you own the AMD model and wish to include [jetm's mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms) to enable Wi-Fi and Bluetooth, also paste the mediatek patch after the audio one in the same `linux-kernel-test.patch` file.
+Inside the `kernel` folder, locate and open the file called `linux-kernel-test.patch`; copy paste here the contents of the relevant `.patch` file downloaded from this repo, based on the kernel version you downloaded using `fedpkg`/`koji`.
+If you own the AMD model and wish to include [jetm's mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms) to enable Wi-Fi and Bluetooth, also paste the mediatek patch after the audio one in the same `linux-kernel-test.patch` file.
+
+> [!NOTE]
+> The `mt7927` WiFi+BT driver is included out of the box on kernel 7.2+, so unless you're compiling an older version for some reason, there is no need to include separate mediatek patches.
+
+> [!TIP]
+> Note that you may still want to include some non-audio patches (e.g. [see here](../patches/extras/)); in this case, simply appending the contents of these extra `.patch` files to the `linux-kernel-test.patch` file is fine.
 
 ### Setting up kernel config parameters
 Inside the `kernel` folder, locate and open the file called `kernel-local`; copy paste there the following lines (you can safely ignore the comment lines starting with `#` at the top of the file):
