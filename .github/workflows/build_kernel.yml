@@ -91,6 +91,21 @@ jobs:
                 echo "Mediatek patch: ${MT_PATCH}"
 
                 cat "${AUDIO_PATCH}" "${MT_PATCH}" > kernel/linux-kernel-test.patch
+
+                EXTRA_PATCHES=$(ls -v patches/extras/*.patch 2>/dev/null || true)
+                if [ -n "${EXTRA_PATCHES}" ]; then
+                    echo "Extra patches found:"
+                    for p in ${EXTRA_PATCHES}; do
+                        echo "  ${p}"
+                        cat "${p}" >> kernel/linux-kernel-test.patch
+                    done
+                    EXTRA_PATCH_LIST=$(echo "${EXTRA_PATCHES}" | xargs -I{} basename {} .patch | tr '\n' ',' | sed 's/,/, /g; s/, $//')
+                else
+                    echo "No extra patches found, skipping."
+                    EXTRA_PATCH_LIST="none"
+                fi
+                echo "EXTRA_PATCH_LIST=${EXTRA_PATCH_LIST}" >> "$GITHUB_ENV"
+
                 echo "Combined patch written to kernel/linux-kernel-test.patch"
             - name: Set kernel-local config parameters
               run: |
@@ -137,6 +152,7 @@ jobs:
 
                     **Fedora version:** ${{ env.FEDORA_VERSION }}
                     **[jetm](https://github.com/jetm/mediatek-mt7927-dkms)'s mt7927 patch version:** ${{ env.MT_VER }}
+                    **Extra patches:** ${{ env.EXTRA_PATCH_LIST }}
 
                     ### Contents
                     `legion-pro7-audio-*.tar.gz`: tarball of all required RPMs
