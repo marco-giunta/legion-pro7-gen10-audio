@@ -64,7 +64,7 @@ To determine whether your laptop is a candidate for this driver, see **Step 0** 
 
 - *Smart Connect key & Camera Privacy switch fixes*: [these are all mine](patches/extras/).
 
-More detailed credits are available at the bottom of this page.
+More detailed credits are available [here](#credits).
 
 **What's new in this fork:**
 - **Automated Fedora RPM builds** via GitHub Actions
