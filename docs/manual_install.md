@@ -16,13 +16,13 @@ If your ID matches one of these, proceed to step 1.
 
 If your ID is not listed, but your laptop is one of the supported models, it may simply be an undiscovered hardware revision.
 
-Before opening an issue, verify that your laptop satisfies the requirements described in the [**"Will this patch work on other laptops?"**](../README.md#will-this-patch-work-on-other-laptops) FAQ. In short, you must ensure that:
+Before opening an issue, verify that your laptop satisfies the requirements described in the ["Will this patch work on other laptops?"](./will_this_patch_work_on_other_laptops.md) guide. In short, you must ensure that:
 
 - it has two dedicated woofers and a Smart Amplifier (as stated on the PSREF website);
 - its ACPI tables contain the `AWDZ8399` entry;
 - its Windows Realtek audio driver contains the `AWDZ8399.bin` firmware binary file.
 
-More details in that FAQ entry.
+More details in the linked guide.
 
 If all checks pass, please open an issue following the instructions from the ["support new laptops" guide](./support_new_laptops.md).
 

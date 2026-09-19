@@ -10,6 +10,8 @@ In particular, these models from the Gen 10 family are confirmed to lack smart a
 
 *Note on the 7i*: the Legion 7i Gen 10 (16IAX10, DMI 83KY, codec SSID 17aa:392c) is a partial exception to the above. It does have a smart amplifier (Cirrus CS35L56), but unlike the AW88399 its driver and firmware are already upstream. If audio is broken on this model, outdated firmware packages are the most likely cause rather than a missing driver. If audio is broken, rather than simply quiet/lacking bass, see e.g. [this thread](https://forums.linuxmint.com/viewtopic.php?t=455596) to diagnose further.
 
+To confirm whether your hardware does or does not use the AW88399 as an HDA side-codec connected via I2C to drive two dedicated woofers, you can use [this guide](./will_this_patch_work_on_other_laptops.md).
+
 ## Improving speaker quality with easyeffects
 
 The stock Linux audio for these laptops can sound thin compared to Windows, but this is because the Windows driver applies Nahimic DSP processing by default; it's not because Linux needs a patched kernel driver.
@@ -59,15 +61,6 @@ options snd-hda-intel model=,limit-mic-boost
 Then rebooting.
 
 Either option applies the `ALC269_FIXUP_LIMIT_INT_MIC_BOOST` quirk, which limits the microphone boost to usable levels. This fix has been confirmed on the Legion Pro 5i 16IAX10H (as well as all Pro 7 variants with the aw88399) and may work on related models, but is untested on others; your mileage may vary.
-
-## Checking if your model has the AW88399 smart amp
-
-If you're curious whether your model could benefit from the full patch, run:
-```bash
-sudo strings /sys/firmware/acpi/tables/DSDT | grep AWDZ8399
-```
-If this returns output, your laptop has the same smart amp hardware as the supported Pro 7 models. In that case, see the FAQ entry "Will this patch work on other laptops?" and consider opening an issue.
-
 
 ## Credits
 The section above on overriding audio quirks has been adapted from [this guide by github user mike-echo-oscar-whiskey](https://gist.github.com/mike-echo-oscar-whiskey/f24410d0fb81740ecf8def54c6f03949).
