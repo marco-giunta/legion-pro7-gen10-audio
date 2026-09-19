@@ -2,7 +2,9 @@
 [![Build Patched Kernel RPMs](https://github.com/marco-giunta/legion-pro7-gen10-audio/actions/workflows/build_kernel.yml/badge.svg?event=workflow_dispatch)](https://github.com/marco-giunta/legion-pro7-gen10-audio/actions/workflows/build_kernel.yml)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/marco-giunta/legion-pro7-gen10-audio/total?&logo=github&logoColor=white&label=Downloads&labelColor=%231a1a2e&color=%232196f3)
 
-> Patched Linux audio drivers for Lenovo Legion Pro 7/7i Gen 10 (AMD & Intel). Includes Fedora RPM packages and installation automation. [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model.
+> Patched Linux audio drivers for Lenovo Legion Pro 7/7i Gen 10 (AMD & Intel). Includes Fedora RPM packages and installation automation.
+>
+> [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model (pre-7.2 releases), as well as [non-audio related, Legion-specific fixes](patches/extras) to fix some broken keyboard functionality.
 
 > [!NOTE]
 > **The AW88399 HDA side codec driver has been [merged into the Linux kernel](https://github.com/torvalds/linux/commit/e5c91aac491def6ab3f90c4cc246e3fcb0f8f058) and [is now shipping starting with 7.3-rc1](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/diff/sound/hda/codecs/side-codecs/aw88399_hda.c?id=v7.3-rc1&id2=v7.2).** Once the final 7.3 kernel is released, users will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/README.md) for historical info about the upstream submission.
@@ -68,7 +70,7 @@ More detailed credits are available at the bottom of this page.
 - **Automated Fedora RPM builds** via GitHub Actions
 - **Installation wizards** and automation scripts
 - **Comprehensive self-compile guide** for Fedora
-- **[mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms)** to enable Wi-Fi and Bluetooth on the AMD model
+- **[mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms)** to enable Wi-Fi and Bluetooth on the AMD model (pre-7.2 releases)
 - **easyeffects profiles** to restore some Windows-like features
 - **[extra patches](patches/extras/)** to allow for correct remapping of the Smart Connect (F11) key, without interference from the camera privacy switch
 
@@ -117,7 +119,7 @@ This script will guide you through installing the required firmware, the NVIDIA 
 If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the ["manual installation"](#manual-installation) section below.
 
 > [!IMPORTANT]
-> Beyond the audio and WiFi/BT fixes, the prebuilt RPMs also include patches for other Legion-specific kernel behavior that are pending upstream inclusion or have yet to reach the stable kernel. See [the `patches/extras/` folder](patches/extras/) for details on what is included and why, including workarounds for remapping the Smart Connect key (F11) and fixing the camera privacy switch under Linux.
+> Beyond the audio fix (and the WiFi+BT mt7927 patch on pre-7.2 kernels), the prebuilt RPMs also include patches for other Legion-specific kernel behavior that are pending upstream inclusion or have yet to reach the stable kernel. See [the `patches/extras/` folder](patches/extras/) for details on what is included and why, including workarounds for remapping the Smart Connect key (F11) and fixing the camera privacy switch under Linux.
 
 > [!TIP]
 > As with any script you run with elevated privileges, you are encouraged to [read it](scripts/install.sh) before running it. The script is short, commented, and does only what is described above.
@@ -225,6 +227,10 @@ The automated install script downloads and installs prebuilt kernel RPMs from th
 - You can [build the patched kernel yourself](docs/self_compile.md) to verify.
 
 In short: the build process is transparent and auditable, the downloads are checksum-verified, and the script itself is short and readable. You are not being asked to trust a black box.
+
+> [!NOTE]
+> The final mt7927 WiFi+BT driver is included in all 7.2+ kernels. As such, the logic to separately add the mediatek patch from the `patches/mt7927/` folder has now been removed from the build script. If you want to audit the version of the GitHub actions script that was used to make previous releases, please use the commit history.
+> Note that for releases 7.2.4-7.2.6 here, I temporarily used an empty mediatek file (v2.15) as a placeholder before I properly edited the build script, so the above only applies starting with release 7.2.7 from this repo.
 
 ### Black screen issues
 If you see a black screen with a cursor or bar in the top left corner after selecting the patched kernel in the GRUB boot menu, the most likely cause is Secure Boot preventing the patched kernel from loading, as it is unsigned (unlike the stock Fedora kernel).
@@ -384,7 +390,7 @@ It's been an amazing journey; I learned a lot, got to meet and collaborate with 
 > Sincere thanks to everyone who [pledged](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/blob/main/PLEDGE.md) a reward for solving this problem.
 </details>
 
-### mt7927 patch
+### mt7927 patch (pre-7.2 releases)
 All credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms); I haven't made any meaningful changes to their work. The only difference between their repo and the contents of my [patches/mt7927](patches/mt7927) folder is that I repackaged the split patches in a single file, since this repo is focused on building a patched kernel rather than upstream review or DKMS packaging.
 
 ---

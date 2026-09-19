@@ -62,7 +62,7 @@ jobs:
               run: |
                 cd kernel
                 dnf builddep -y kernel.spec
-            - name: Concatenate audio + mediatek patches into linux-kernel-test.patch
+            - name: Concatenate audio + extra patches into linux-kernel-test.patch
               run: |
                 if [ -n "${PATCH_VERSION}" ]; then
                     AUDIO_PATCH="patches/audio/${PATCH_VERSION}"
@@ -73,28 +73,19 @@ jobs:
                 else
                     AUDIO_PATCH=$(ls -v patches/audio/*.patch 2>/dev/null | tail -1)
                 fi
-                MT_PATCH=$(ls -v patches/mt7927/*.patch 2>/dev/null | tail -1)
 
                 if [ -z "${AUDIO_PATCH}" ]; then
                     echo "ERROR: No audio patch found under patches/audio/"
                     exit 1
                 fi
-                if [ -z "${MT_PATCH}" ]; then
-                    echo "ERROR: No mediatek patch found under patches/mt7927/"
-                    exit 1
-                fi
-
-                MT_VER=$(basename "${MT_PATCH}" .patch | grep -oP '(?<=v)[\d.]+')
-                echo "MT_VER=${MT_VER}" >> "$GITHUB_ENV"
 
                 echo "Audio patch: ${AUDIO_PATCH}"
-                echo "Mediatek patch: ${MT_PATCH}"
 
-                cat "${AUDIO_PATCH}" "${MT_PATCH}" > kernel/linux-kernel-test.patch
+                cat "${AUDIO_PATCH}" > kernel/linux-kernel-test.patch
 
                 EXTRA_PATCHES=$(ls -v patches/extras/*.patch 2>/dev/null || true)
                 if [ -n "${EXTRA_PATCHES}" ]; then
-                    echo "Extra patches found:"
+                    echo "Extra patches:"
                     for p in ${EXTRA_PATCHES}; do
                         echo "  ${p}"
                         cat "${p}" >> kernel/linux-kernel-test.patch
@@ -151,7 +142,6 @@ jobs:
                     Automated build of the Legion Pro 7/7i Gen 10 patched kernel RPMs.
 
                     **Fedora version:** ${{ env.FEDORA_VERSION }}
-                    **[jetm](https://github.com/jetm/mediatek-mt7927-dkms)'s mt7927 patch version:** ${{ env.MT_VER }}
                     **Extra patches:** ${{ env.EXTRA_PATCH_LIST }}
 
                     ### Contents
