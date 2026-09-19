@@ -123,6 +123,8 @@ If you wish to customize the install (for example, to install the proprietary NV
 
 > [!TIP]
 > As with any script you run with elevated privileges, you are encouraged to [read it](scripts/install.sh) before running it. The script is short, commented, and does only what is described above.
+>
+> You are also strongly encouraged to read the ["How do I know the prebuilt RPMs and install scripts are safe?" FAQ entry](#how-do-i-know-the-prebuilt-rpms-and-install-scripts-are-safe).
 
 After the script is done, reboot; your system should automatically boot the patched kernel. You can confirm this by running `uname -r`; if you see a string containing the word `legion`, you're good to go. Otherwise, reboot your computer and repeatedly press the ESC key during boot to access the grub menu. You'll find an entry labeled `<...>.legion<...>.fc<...>.x86_64`; select it with the up/down keys, then press enter.
 
