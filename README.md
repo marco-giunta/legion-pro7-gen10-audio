@@ -117,7 +117,7 @@ This script will guide you through installing the required firmware, the NVIDIA 
 If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the ["manual installation"](#manual-installation) section below.
 
 > [!IMPORTANT]
-> Beyond the audio and WiFi/BT fixes, the prebuilt RPMs also include patches for other Legion-specific kernel behavior that are pending upstream inclusion or have yet to reach the stable kernel. See [`patches/extras/README.md`](patches/extras/README.md) for details on what is included and why, including workarounds for remapping the Smart Connect key (F11) and fixing the camera privacy switch under Linux.
+> Beyond the audio and WiFi/BT fixes, the prebuilt RPMs also include patches for other Legion-specific kernel behavior that are pending upstream inclusion or have yet to reach the stable kernel. See [the `patches/extras/` folder](patches/extras/) for details on what is included and why, including workarounds for remapping the Smart Connect key (F11) and fixing the camera privacy switch under Linux.
 
 > [!TIP]
 > As with any script you run with elevated privileges, you are encouraged to [read it](scripts/install.sh) before running it. The script is short, commented, and does only what is described above.
