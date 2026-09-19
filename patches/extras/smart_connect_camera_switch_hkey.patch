@@ -1,0 +1,100 @@
+diff -rupN linux-7.2.6/drivers/platform/x86/lenovo/ideapad-laptop.c linux-7.2.6_hkey_patch/drivers/platform/x86/lenovo/ideapad-laptop.c
+--- linux-7.2.6/drivers/platform/x86/lenovo/ideapad-laptop.c	2026-09-14 13:41:11.000000000 +0200
++++ linux-7.2.6_hkey_patch/drivers/platform/x86/lenovo/ideapad-laptop.c	2026-09-19 12:39:06.655819909 +0200
+@@ -178,6 +178,7 @@ struct ideapad_private {
+ 	struct ideapad_rfk_priv rfk_priv[IDEAPAD_RFKILL_DEV_NUM];
+ 	struct platform_device *platform_device;
+ 	struct input_dev *inputdev;
++	struct input_dev *camera_switch_idev;
+ 	struct backlight_device *blightdev;
+ 	struct ideapad_dytc_priv *dytc;
+ 	struct dentry *debug;
+@@ -1358,6 +1359,8 @@ static const struct key_entry ideapad_ke
+ 	{ KE_KEY,	0x44 | IDEAPAD_WMI_KEY, { KEY_PROG1 } },
+ 	/* Eye */
+ 	{ KE_KEY,	0x45 | IDEAPAD_WMI_KEY, { KEY_PROG3 } },
++	/* Lenovo Smart Connect */
++	{ KE_KEY,	0x48 | IDEAPAD_WMI_KEY, { KEY_LINK_PHONE } },
+ 	/* Performance toggle also Fn+Q, handled inside ideapad_wmi_notify() */
+ 	{ KE_KEY,	0x3d | IDEAPAD_WMI_KEY, { KEY_PROG4 } },
+ 	/* shift + prtsc */
+@@ -1406,10 +1409,43 @@ err_free_dev:
+ 	return err;
+ }
+ 
++static int ideapad_camera_switch_init(struct ideapad_private *priv, bool covered)
++{
++	struct input_dev *idev;
++	int err;
++
++	idev = input_allocate_device();
++	if (!idev)
++		return -ENOMEM;
++
++	idev->name = "Ideapad Camera Switch";
++	idev->phys = "ideapad/input1";
++	idev->id.bustype = BUS_HOST;
++	idev->dev.parent = &priv->platform_device->dev;
++
++	input_set_capability(idev, EV_SW, SW_CAMERA_LENS_COVER);
++	input_report_switch(idev, SW_CAMERA_LENS_COVER, covered);
++	input_sync(idev);
++
++	err = input_register_device(idev);
++	if (err) {
++		input_free_device(idev);
++		return err;
++	}
++
++	priv->camera_switch_idev = idev;
++	return 0;
++}
++
+ static void ideapad_input_exit(struct ideapad_private *priv)
+ {
+ 	input_unregister_device(priv->inputdev);
+ 	priv->inputdev = NULL;
++
++	if (priv->camera_switch_idev) {
++		input_unregister_device(priv->camera_switch_idev);
++		priv->camera_switch_idev = NULL;
++	}
+ }
+ 
+ static void ideapad_input_report(struct ideapad_private *priv,
+@@ -1418,6 +1454,19 @@ static void ideapad_input_report(struct
+ 	sparse_keymap_report_event(priv->inputdev, scancode, 1, true);
+ }
+ 
++static void ideapad_camera_switch_report(struct ideapad_private *priv, bool covered)
++{
++	if (!priv->camera_switch_idev) {
++		if (ideapad_camera_switch_init(priv, covered))
++			dev_warn(&priv->platform_device->dev,
++				 "Failed to register camera switch input device\n");
++		return;
++	}
++
++	input_report_switch(priv->camera_switch_idev, SW_CAMERA_LENS_COVER, covered);
++	input_sync(priv->camera_switch_idev);
++}
++
+ static void ideapad_input_novokey(struct ideapad_private *priv)
+ {
+ 	unsigned long long_pressed;
+@@ -2308,6 +2357,15 @@ static void ideapad_wmi_notify(struct wm
+ 			break;
+ 		}
+ 
++		/*
++		 * Camera switch, handled by the firmware:
++		 * 0x0c camera enabled, 0x0d camera disabled
++		 */
++		if (data->integer.value == 0x0c || data->integer.value == 0x0d) {
++			ideapad_camera_switch_report(priv, data->integer.value == 0x0d);
++			break;
++		}
++
+ 		/* 0x02 FnLock, 0x03 Esc */
+ 		if (data->integer.value == 0x02 || data->integer.value == 0x03)
+ 			ideapad_fn_lock_led_notify(priv, data->integer.value == 0x02);
