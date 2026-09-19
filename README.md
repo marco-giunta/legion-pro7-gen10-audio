@@ -52,7 +52,7 @@ These models do *not* need a patched kernel, only some software tweaks; see the 
 > The Legion 7i 16IAX10 is an exception: while it also has only 2 speakers, it does use a Cirrus CS35L56 smart amp, but its driver and firmware are already upstream. Therefore, though once again no patched kernel is needed, things like outdated firmware packages can break audio beyond what easyeffects can fix; see e.g. [here](https://forums.linuxmint.com/viewtopic.php?t=455596). So if audio is broken (and not simply quiet or lacking bass) you may need to diagnose further.
 
 Other Legion models may also benefit from this patch despite being currently unsupported.
-To determine whether your laptop is a candidate for this driver, see **Step 0** of the manual installation guide or the [**"Will this patch work on other laptops?"**](#will-this-patch-work-on-other-laptops) FAQ. In short, the laptop must have dedicated woofers driven by an AW88399 Smart Amplifier. The FAQ below explains how to verify this using the speaker specifications, ACPI tables, and the official Lenovo Windows audio driver for your machine.
+To determine whether your laptop is a candidate for this driver, see **Step 0** of the [manual installation guide](docs/manual_install.md) or the [**"Will this patch work on other laptops?"**](#will-this-patch-work-on-other-laptops) FAQ. In short, the laptop must have dedicated woofers driven by an AW88399 Smart Amplifier. The FAQ below explains how to verify this using the speaker specifications, ACPI tables, and the official Lenovo Windows audio driver for your machine.
 
 **Credits & Attributions**
 
@@ -125,124 +125,7 @@ If you wish to customize the install (for example, to install the proprietary NV
 After the script is done, reboot; your system should automatically boot the patched kernel. You can confirm this by running `uname -r`; if you see a string containing the word `legion`, you're good to go. Otherwise, reboot your computer and repeatedly press the ESC key during boot to access the grub menu. You'll find an entry labeled `<...>.legion<...>.fc<...>.x86_64`; select it with the up/down keys, then press enter.
 
 ### Manual installation
-If you'd rather not run an automated script, follow the steps below to install everything manually; these are functionally equivalent to the install wizard.
-
-0. **Verify your device is supported**
-
-Check your SSID:
-```bash
-grep -l "Codec: Realtek" /proc/asound/card*/codec#* | xargs grep -i "Subsystem Id"
-```
-You should see a line like `Subsystem Id: 0x17aa<...>`, where `<...>` equals 4 characters. These are the IDs currently supported by the patch:
-- `0x17aa3906`, `0x17aa3907` - Legion Pro 7i Gen 10 / Y9000P 2025 (16IAX10H / IAX10, Intel)
-- `0x17aa3927`, `0x17aa3928` - Legion R9000P 2025 (ADR10, AMD)
-- `0x17aa3936`, `0x17aa3937` - Legion R9000P 2025 (ADR10H, AMD)
-- `0x17aa3938`, `0x17aa3939` - Legion Pro 7 Gen 10 (16AFR10H, AMD)
-
-If your ID matches one of these, proceed to step 1.
-
-If your ID is not listed, but your laptop is one of the supported models, it may simply be an undiscovered hardware revision.
-
-Before opening an issue, verify that your laptop satisfies the requirements described in the [**"Will this patch work on other laptops?"**](#will-this-patch-work-on-other-laptops) FAQ. In short, you must ensure that:
-
-- it has two dedicated woofers and a Smart Amplifier (as stated on the PSREF website);
-- its ACPI tables contain the `AWDZ8399` entry;
-- its Windows Realtek audio driver contains the `AWDZ8399.bin` firmware binary file.
-
-More details in that FAQ entry.
-
-If all checks pass, please open an issue following the instructions from the ["support new laptops" guide](docs/support_new_laptops.md).
-
-Similarly, if you don't get a matching codec SSID *and* your laptop is a model other than one of the supported ones, perform the same basic diagnostics before opening an issue with the same "support new laptops" guide. If you own a Legion 5i/7i 16IAX10, a Legion Pro 5i 16IAX10H, or a Legion Pro 5 16AFR10/16ADR10, you don't need a patched kernel at all; see the [audio guide for other Legion models](docs/other_legions_guide.md).
-
-1. **Install the firmware**
-- Download the [`aw88399_acf.bin` file](firmware/aw88399/aw88399_acf.bin); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in [this section](#step-3-verify-the-windows-audio-driver-contains-the-aw88399-firmware-binary).
-- *Optional but recommended:* Download the [`aw88399_acf.bin.sha256`](firmware/aw88399/aw88399_acf.bin.sha256) file, put it in the same folder as the downloaded `aw88399_acf.bin`, and check the integrity of the binary:
-```bash
-# run this in the folder containing both the .bin and the .bin.sha256 files
-sha256sum -c aw88399_acf.bin.sha256
-```
-If this doesn't return "OK", it means either file got corrupted in the download.
-- Install the firmware by copying the `aw88399_acf.bin` file to `/lib/firmware/aw88399_acf.bin`:
-```bash
-sudo cp -f aw88399_acf.bin /lib/firmware/aw88399_acf.bin
-```
-- If you own the AMD model and wish to enable Wi-Fi and Bluetooth using jetm's [mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms), you will also need the MediaTek WiFi/BT firmware binaries. These files have been submitted to the `linux-firmware` repository alongside jetm's kernel submission:
-  - **WiFi firmware** (`WIFI_MT6639_PATCH_MCU_2_1_hdr.bin`, `WIFI_RAM_CODE_MT6639_2_1.bin`): [accepted upstream](https://gitlab.com/kernel-firmware/linux-firmware/-/merge_requests/1055) and already shipped by Fedora's `linux-firmware` package as `.bin.xz` files. Check if you already have `/lib/firmware/mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin.xz` and `/lib/firmware/mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin.xz` (running `dnf update` may be needed first); if you do, you don't need to install these files manually.
-  - **Bluetooth firmware** (`BT_RAM_CODE_MT6639_2_1_hdr.bin`): [not yet accepted upstream](https://gitlab.com/kernel-firmware/linux-firmware/-/merge_requests/946), so this still needs to be installed manually.
-
-  For the Bluetooth file (and the WiFi files if not already present), [download them from this repo](firmware/mt7927), then verify and install them:
-```bash
-# check sha256 checksums
-sha256sum -c BT_RAM_CODE_MT6639_2_1_hdr.bin.sha256
-sha256sum -c WIFI_RAM_CODE_MT6639_2_1.bin.sha256
-sha256sum -c WIFI_MT6639_PATCH_MCU_2_1_hdr.bin.sha256
-```
-
-```bash
-# install wifi firmware
-sudo mkdir -p /lib/firmware/mediatek/mt7927
-sudo cp -f WIFI_MT6639_PATCH_MCU_2_1_hdr.bin /lib/firmware/mediatek/mt7927
-sudo cp -f WIFI_RAM_CODE_MT6639_2_1.bin /lib/firmware/mediatek/mt7927
-# install bt firmware
-sudo cp -f BT_RAM_CODE_MT6639_2_1_hdr.bin /lib/firmware/mediatek/mt7927
-```
-To obtain your own copy of these Mediatek binaries from official Windows drivers, you can use the scripts in [jetm](https://github.com/jetm/mediatek-mt7927-dkms)'s repo.
-
-
-2. **Install the NVIDIA driver builder**
-
-The `akmod-nvidia` package is needed to automatically build the NVIDIA driver for the patched kernel. This package builds the driver as distributed in the nonfree RPM Fusion repo, and is [the standard approach on Fedora](https://rpmfusion.org/Howto/NVIDIA) and what this guide assumes.
-
-> [!NOTE]
-> Skip this step if you prefer the open source Mesa/NVK driver, want to obtain the proprietary driver from a different repo, or are on a Fedora derivative that already manages the NVIDIA driver for you. Since the patch only touches audio (and optionally WiFi/BT on the AMD model), there's no fundamental reason why a different graphics setup shouldn't work; however, alternative paths are untested, so you're on your own. Feel free to open an issue if you run into anything useful to share. If you're unsure, just follow the steps below.
-
-
-Run the following command:
-```bash
-rpm -qa | grep akmod-nvidia
-```
-If you see `akmod-nvidia-<...>.x86-64` the package is already installed and you can skip to step 3; otherwise:
-- Enable the free and nonfree RPM Fusion repositories if you haven't already:
-```bash
-sudo dnf install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
-sudo dnf install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-```
-- install the `akmod-nvidia` package:
-```bash
-sudo dnf install akmod-nvidia
-```
-3. **Obtain the kernel RPMs**
-- Head to the [releases section](https://github.com/marco-giunta/legion-pro7-gen10-audio/releases) and download the latest kernel available. Alternatively, you can compile your own patched kernel in RPM format using my [self compile guide](docs/self_compile.md).
-- *Optional but recommended:* download the corresponding sha256 checksum and check the integrity of the downloaded file:
-```bash
-sha256sum -c legion-pro7-audio-*.tar.gz.sha256
-```
-- Unpack the archive and install the RPMs:
-```bash
-tar xzf legion-pro7-audio-*.tar.gz
-sudo dnf install --nogpgcheck kernel-*.rpm
-```
-The patched kernel will now be available in the grub menu. If you installed the `akmod-nvidia` package in step 2, before rebooting, run
-```bash
-sudo akmods --force
-```
-and wait for it to confirm that the NVIDIA driver for the patched kernel has been built successfully.
-
-4. **Post install**
-- After rebooting, verify the installation:
-```bash
-# Check kernel version
-uname -r
-# Should contain the word "legion"
-
-# List installed custom kernels
-rpm -qa | grep legion
-
-# Test audio
-speaker-test -c 2 -t wav
-```
-The same rule stated in the previous section applies: ensure you select the analog stereo duplex profile (or enable the boot parameter on the Intel model), and you're good to go!
+If you'd rather not run an automated script, follow the steps [in this guide](docs/manual_install.md) to install everything manually; they are functionally equivalent to the install wizard.
 
 ## Optional Post-installation Steps
 
@@ -250,7 +133,7 @@ The same rule stated in the previous section applies: ensure you select the anal
 Once the patched kernel and NVIDIA drivers are working, you can optionally re-enable Secure Boot by signing the kernel and modules with your own Machine Owner Key (MOK). See the [Secure Boot guide](docs/secure_boot.md) for full step-by-step instructions.
 
 ### Set the patched kernel as persistent default
-If you keep both the patched and stock kernels installed (recommended), every time Fedora ships a kernel update, the stock kernel will silently reclaim the default GRUB boot entry. Because of this, the patched kernel will no longer automatically boot, and you'll have to select it manually from the GRUB boot menu on every startup. The fix below automatically re-asserts the patched kernel as default after every kernel install.
+If you keep both the patched and stock kernels installed (recommended), and you update to a stock Fedora kernel newer than the currently installed Legion kernel, the stock one will silently reclaim the default GRUB boot entry. Because of this, the patched kernel will no longer automatically boot, and you'll have to select it manually from the GRUB boot menu on every startup. The fix below automatically re-asserts the patched kernel as default after every kernel install.
 
 [All credit for this fix goes to GitHub user mikaeldui.](https://gist.github.com/mikaeldui/bf3cd9b6932ff3a2d49b924def778ebb)
 
@@ -277,6 +160,10 @@ sudo chmod u+rx /etc/kernel/postinst.d/99-default
 ```
 
 These steps have to be performed only once. You can verify the default kernel at any time by running `sudo grubby --default-kernel`; the output should contain the word `legion`.
+
+> [!NOTE]
+> If you install the latest Legion kernel from this repo *before* the corresponding version ships in the official Fedora `kernel` repo, `dnf` will skip updating the stock kernel, and the above will be a non-issue. Since the releases in this repo are synced with upstream (and in particular, relying on `fedpkg` means that I don't have to wait for the official update to be out before I can build the latest kernel), this is perfectly viable.
+> That said, it requires the user constantly monitor `dnf update` to sync between kernel versions, hence the above fix is still recommended.
 
 ### Echoing jack issue fix
 While headphones are plugged in the jack port, if both music is playing and the mic is recording (e.g. you are on a discord call while playing a game), if the output volume is high enough, the mic will pick up a quieter copy of the signal being played, causing an annoying echo (quiet but audible). [Based on my findings](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/34#issuecomment-4176480130), this is a hardware limitation that Windows fixes with clever proprietary software that cannot be easily replicated 1:1 under Linux. To fix this issue, you have two options:
@@ -316,7 +203,7 @@ No. The original kernel remains installed unless you manually remove it, *which 
 ### How do I update to a newer kernel version?
 Simply re-run the install script; it will automatically download and install the latest kernel built by GitHub Actions, while skipping the pre- and post- install steps that have been already completed.
 
-Alternatively, download and extract the updated tarball, then run the same `dnf install --nogpgcheck` command detailed in the ["manual installation"](#manual-installation) section above; anything else (like installing the firmware, installing the NVIDIA package, and setting the correct audio profile) has to be done only once, no need to repeat those steps.
+Alternatively, download and extract the updated tarball, then run the same `dnf install --nogpgcheck` command detailed in the ["manual installation"](docs/manual_install.md) guide; anything else (like installing the firmware, installing the NVIDIA package, and setting the correct audio profile) has to be done only once, no need to repeat those steps.
 
 ### How do I remove an older version of the patched kernel?
 The recommended way to uninstall old kernel builds is to do nothing at all: by default, Fedora keeps around three kernels as fallback, so when you install a new one, the oldest will be removed.
@@ -328,7 +215,7 @@ Keep in mind that `dnf` prevents the user from removing the kernel currently in 
 Regular Fedora updates won't affect the custom kernel. However, when new kernel versions are released, you may want to install updated versions from this repository for the latest features and security fixes.
 
 ### Where does the firmware come from?
-See [this section](#step-3-verify-the-windows-audio-driver-contains-the-aw88399-firmware-binary) for details on how `aw88399_acf.bin` was extracted from the Windows driver, and how you can extract it yourself if you wish to do so.
+See [this section of the manual install guide](/docs/manual_install.md#step-3-verify-the-windows-audio-driver-contains-the-aw88399-firmware-binary) for details on how `aw88399_acf.bin` was extracted from the Windows driver, and how you can extract it yourself if you wish to do so.
 
 ### How do I know the prebuilt RPMs and install scripts are safe?
 The automated install script downloads and installs prebuilt kernel RPMs from this repository's [releases page](https://github.com/marco-giunta/legion-pro7-gen10-audio/releases). There are several layers of verifiability:
