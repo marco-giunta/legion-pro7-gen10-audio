@@ -1,6 +1,6 @@
 diff -rupN linux-7.2.6/drivers/platform/x86/lenovo/ideapad-laptop.c linux-7.2.6_hkey_patch/drivers/platform/x86/lenovo/ideapad-laptop.c
 --- linux-7.2.6/drivers/platform/x86/lenovo/ideapad-laptop.c	2026-09-14 13:41:11.000000000 +0200
-+++ linux-7.2.6_hkey_patch/drivers/platform/x86/lenovo/ideapad-laptop.c	2026-09-19 12:39:06.655819909 +0200
++++ linux-7.2.6_hkey_patch/drivers/platform/x86/lenovo/ideapad-laptop.c	2026-09-20 22:38:36.846607689 +0200
 @@ -178,6 +178,7 @@ struct ideapad_private {
  	struct ideapad_rfk_priv rfk_priv[IDEAPAD_RFKILL_DEV_NUM];
  	struct platform_device *platform_device;
@@ -62,16 +62,19 @@ diff -rupN linux-7.2.6/drivers/platform/x86/lenovo/ideapad-laptop.c linux-7.2.6_
  }
  
  static void ideapad_input_report(struct ideapad_private *priv,
-@@ -1418,6 +1454,19 @@ static void ideapad_input_report(struct
+@@ -1418,6 +1454,22 @@ static void ideapad_input_report(struct
  	sparse_keymap_report_event(priv->inputdev, scancode, 1, true);
  }
  
 +static void ideapad_camera_switch_report(struct ideapad_private *priv, bool covered)
 +{
++	/* The WMI notify path is serialized through ideapad_shared_mutex */
++	lockdep_assert_held(&ideapad_shared_mutex);
++
 +	if (!priv->camera_switch_idev) {
 +		if (ideapad_camera_switch_init(priv, covered))
-+			dev_warn(&priv->platform_device->dev,
-+				 "Failed to register camera switch input device\n");
++			dev_warn_once(&priv->platform_device->dev,
++				      "Failed to register camera switch input device\n");
 +		return;
 +	}
 +
@@ -82,7 +85,7 @@ diff -rupN linux-7.2.6/drivers/platform/x86/lenovo/ideapad-laptop.c linux-7.2.6_
  static void ideapad_input_novokey(struct ideapad_private *priv)
  {
  	unsigned long long_pressed;
-@@ -2308,6 +2357,15 @@ static void ideapad_wmi_notify(struct wm
+@@ -2308,6 +2360,15 @@ static void ideapad_wmi_notify(struct wm
  			break;
  		}
  
