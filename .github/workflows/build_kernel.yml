@@ -83,20 +83,42 @@ jobs:
 
                 cat "${AUDIO_PATCH}" > kernel/linux-kernel-test.patch
 
+                # Apply extra patches individually against a clean kernel source tree,
+                # regenerate a clean diff, and append it to the combined patch
+
                 EXTRA_PATCHES=$(ls -v patches/extras/*.patch 2>/dev/null || true)
+                EXTRA_PATCH_LIST=""
+
                 if [ -n "${EXTRA_PATCHES}" ]; then
-                    echo "Extra patches:"
+                    # Derive kernel version and download source from kernel.org
+                    KVER=$(grep -m1 '^%define specrpmversion' kernel/kernel.spec | awk '{print $3}')
+                    KMAJ=$(echo "${KVER}" | cut -d. -f1)
+                    echo "Downloading kernel ${KVER} source for extra patch application..."
+                    mkdir -p /tmp/kernel-src
+                    curl -fsSL "https://cdn.kernel.org/pub/linux/kernel/v${KMAJ}.x/linux-${KVER}.tar.xz" \
+                        | tar xJ --strip-components=1 -C /tmp/kernel-src
+
+                    cp -r /tmp/kernel-src /tmp/kernel-src-patched
+
                     for p in ${EXTRA_PATCHES}; do
-                        echo "  ${p}"
-                        cat "${p}" >> kernel/linux-kernel-test.patch
+                        NAME=$(basename "${p}" .patch | sed 's/^[0-9]*-//')
+                        echo "  ${p} -> ${NAME}"
+                        patch -p1 -d /tmp/kernel-src-patched --no-backup-if-mismatch < "${p}" \
+                            || { echo "ERROR: patch failed to apply: ${p}"; exit 1; }
+                        EXTRA_PATCH_LIST="${EXTRA_PATCH_LIST}${NAME}, "
                     done
-                    EXTRA_PATCH_LIST=$(echo "${EXTRA_PATCHES}" | xargs -I{} basename {} .patch | tr '\n' ',' | sed 's/,/, /g; s/, $//')
+
+                    # Generate clean diff and append
+                    diff -rupN /tmp/kernel-src /tmp/kernel-src-patched >> kernel/linux-kernel-test.patch
+
+                    # Trim trailing comma+space
+                    EXTRA_PATCH_LIST=$(echo "${EXTRA_PATCH_LIST}" | sed 's/, $//')
                 else
                     echo "No extra patches found, skipping."
                     EXTRA_PATCH_LIST="none"
                 fi
-                echo "EXTRA_PATCH_LIST=${EXTRA_PATCH_LIST}" >> "$GITHUB_ENV"
 
+                echo "EXTRA_PATCH_LIST=${EXTRA_PATCH_LIST}" >> "$GITHUB_ENV"
                 echo "Combined patch written to kernel/linux-kernel-test.patch"
             - name: Set kernel-local config parameters
               run: |

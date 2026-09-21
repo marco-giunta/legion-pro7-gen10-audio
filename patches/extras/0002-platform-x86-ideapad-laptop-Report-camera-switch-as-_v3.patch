@@ -1,0 +1,53 @@
+From fc486af5928961a5043a0729e3ce4c95470a34b9 Mon Sep 17 00:00:00 2001
+From: Rong Zhang <i@rong.moe>
+Date: Mon, 21 Sep 2026 21:47:17 +0800
+Subject: [PATCH] platform/x86: ideapad-laptop: Report camera switch as
+ SW_CAMERA_LENS_COVER
+
+On certain 2025 Lenovo laptops, such as the Yoga Pro 7 14ASP10 and Legion
+Pro 7 16AFR10H, a switch on the side disables the camera. This is handled
+by the firmware, which also sends event 0x0d (camera disabled) or 0x0c
+(camera enabled) through the WMI event GUID handled with
+ideapad_wmi_context_fn_keys. These events are currently reported as
+KEY_UNKNOWN.
+
+Other Lenovo laptops expose a similar camera switch through a separate WMI
+GUID, which lenovo-wmi-camera reports as SW_CAMERA_LENS_COVER since
+commit d98bf6a6ed61 ("platform/x86: lenovo-wmi-camera: Use
+SW_CAMERA_LENS_COVER instead of KEY_CAMERA_ACESS"). That driver does not
+bind on these laptops, so map the WMI events to SW_CAMERA_LENS_COVER as
+well via sparse keymap KE_SW.
+
+Co-developed-by: Marco Giunta <marco_giunta@outlook.it>
+Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
+Signed-off-by: Rong Zhang <i@rong.moe>
+---
+ drivers/platform/x86/lenovo/ideapad-laptop.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/platform/x86/lenovo/ideapad-laptop.c b/drivers/platform/x86/lenovo/ideapad-laptop.c
+index 207368f5d489..fcb5ed7035f5 100644
+--- a/drivers/platform/x86/lenovo/ideapad-laptop.c
++++ b/drivers/platform/x86/lenovo/ideapad-laptop.c
+@@ -1369,6 +1369,18 @@ static const struct key_entry ideapad_keymap[] = {
+ 	{ KE_KEY,   0x29 | IDEAPAD_WMI_KEY, { KEY_TOUCHPAD_TOGGLE } },
+ 	{ KE_KEY,   0x2a | IDEAPAD_WMI_KEY, { KEY_ROOT_MENU } },
+ 
++	/*
++	 * WMI switches
++	 *
++	 * Some devices come with physical switches. Whenever a switch is
++	 * toggled, an WMI event is emitted to inform the software about the
++	 * switch's latest state.
++	 */
++
++	/* Camera switch */
++	{ KE_SW,	0x0c | IDEAPAD_WMI_KEY, .sw = { SW_CAMERA_LENS_COVER, 0 } },
++	{ KE_SW,	0x0d | IDEAPAD_WMI_KEY, .sw = { SW_CAMERA_LENS_COVER, 1 } },
++
+ 	{ KE_END },
+ };
+ 
+-- 
+2.55.0
+

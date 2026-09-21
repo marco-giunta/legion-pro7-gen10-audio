@@ -1,0 +1,46 @@
+From bc39af8c2c43b493ae914245a3092128424ceb62 Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Wed, 16 Sep 2026 15:47:51 +0200
+Subject: [PATCH] platform/x86: ideapad-laptop: Map Smart Connect hotkey to
+ KEY_LINK_PHONE
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+On certain 2025 Lenovo laptops, such as the Yoga Pro 7 14ASP10 and Legion
+Pro 7 16AFR10H, the F11 key includes a symbol showing a laptop, a tablet
+and a smartphone. According to the user manual, the key starts the Lenovo
+Smart Connect app, which connects the laptop to phones and tablets.
+
+These laptops send WMI hotkey event 0x48 (scancode 0x148) when the key
+is pressed, which is currently reported as KEY_UNKNOWN. Map it to
+KEY_LINK_PHONE as the closest match, as thinkpad_acpi does for the
+Microsoft Phone Link and Intel Unison keys, see
+commit 7ba618e893a4 ("platform/x86: thinkpad_acpi: Add support for new
+phone link hotkey") and commit b511bbfe4242 ("platform/x86: thinkpad_acpi:
+handle HKEY 0x1402 event").
+
+Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
+Link: https://patch.msgid.link/SN6PR19MB2303EBD5288E51BA50D904EFFCB92@SN6PR19MB2303.namprd19.prod.outlook.com
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Signed-off-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+---
+ drivers/platform/x86/lenovo/ideapad-laptop.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/platform/x86/lenovo/ideapad-laptop.c b/drivers/platform/x86/lenovo/ideapad-laptop.c
+index 35c13d98b989..207368f5d489 100644
+--- a/drivers/platform/x86/lenovo/ideapad-laptop.c
++++ b/drivers/platform/x86/lenovo/ideapad-laptop.c
+@@ -1358,6 +1358,8 @@ static const struct key_entry ideapad_keymap[] = {
+ 	{ KE_KEY,	0x44 | IDEAPAD_WMI_KEY, { KEY_PROG1 } },
+ 	/* Eye */
+ 	{ KE_KEY,	0x45 | IDEAPAD_WMI_KEY, { KEY_PROG3 } },
++	/* Lenovo Smart Connect */
++	{ KE_KEY,	0x48 | IDEAPAD_WMI_KEY, { KEY_LINK_PHONE } },
+ 	/* Performance toggle also Fn+Q, handled inside ideapad_wmi_notify() */
+ 	{ KE_KEY,	0x3d | IDEAPAD_WMI_KEY, { KEY_PROG4 } },
+ 	/* Mode, opens a profile chooser; the Fn+Q button cycles the profile */
+-- 
+2.55.0
+
