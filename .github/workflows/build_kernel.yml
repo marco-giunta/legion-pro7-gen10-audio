@@ -109,7 +109,7 @@ jobs:
                     done
 
                     # Generate clean diff and append
-                    diff -rupN /tmp/kernel-src /tmp/kernel-src-patched >> kernel/linux-kernel-test.patch
+                    diff -rupN /tmp/kernel-src /tmp/kernel-src-patched >> kernel/linux-kernel-test.patch || true
 
                     # Trim trailing comma+space
                     EXTRA_PATCH_LIST=$(echo "${EXTRA_PATCH_LIST}" | sed 's/, $//')
