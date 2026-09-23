@@ -1,6 +1,6 @@
-From fc486af5928961a5043a0729e3ce4c95470a34b9 Mon Sep 17 00:00:00 2001
+From 3a164e00d722c48e934d0f863d6fb2435d8c0cb8 Mon Sep 17 00:00:00 2001
 From: Rong Zhang <i@rong.moe>
-Date: Mon, 21 Sep 2026 21:47:17 +0800
+Date: Thu, 24 Sep 2026 00:31:27 +0800
 Subject: [PATCH] platform/x86: ideapad-laptop: Report camera switch as
  SW_CAMERA_LENS_COVER
 
@@ -18,10 +18,47 @@ SW_CAMERA_LENS_COVER instead of KEY_CAMERA_ACESS"). That driver does not
 bind on these laptops, so map the WMI events to SW_CAMERA_LENS_COVER as
 well via sparse keymap KE_SW.
 
+Unfortunately, there is no programmatic way to determine the current
+state on the mentioned devices until the next relevant WMI key event.
+Therefore, no switch event is emitted on probe or resume, intentionally
+leaving the default (0, i.e., no covered) or the last state unchanged,
+and let the first relevant WMI key event to correct it. This should
+fulfill the requirement of using the switch events to show an OSD.
+AFAIK, no userspace software queries its state via EVIOCGBIT(EV_SW).
+
+The above behavior is basically the same as lenovo-wmi-camera, except
+that SW_CAMERA_LENS_COVER is always exposed even on devices with no
+camera switch. It's because, again, there is no programmatic way to
+determine the switch's existence on the mentioned devices. Doing so
+should be harmless as long as no switch event is emitted and eliminates
+the need to dynamically register an additional input device at run time
+like lenovo-wmi-camera does. Even if a userspace program does query the
+switch's state via EVIOCGBIT(EV_SW), the returned state will always be 0
+(not covered), which is the correct state on unsupported devices.
+
 Co-developed-by: Marco Giunta <marco_giunta@outlook.it>
 Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
+Tested-by: Marco Giunta <marco_giunta@outlook.it>
 Signed-off-by: Rong Zhang <i@rong.moe>
 ---
+Changes in v3:
+- Take over the patch from Marco Giunta as discussed in
+  https://msgid.link/SN6PR19MB2303278926469783FA99824CFC842@SN6PR19MB2303.namprd19.prod.outlook.com
+- Map the relevant WMI key events via the ideapad_keymap instead of
+  creating a dedicated input device at run time
+- Remove Reviewed-by: Huang Wei <huangwei@kylinos.cn> as the methodology
+  has changed, please review again
+- Link to v2: https://patch.msgid.link/SN6PR19MB2303E25270E1A460ABC76EA3FC852@SN6PR19MB2303.namprd19.prod.outlook.com
+
+Changes in v2:
+- Add lockdep_assert_held(&ideapad_shared_mutex) and a comment at the top
+  of ideapad_camera_switch_report() to document and check that the WMI
+  notify path is serialized through ideapad_shared_mutex (suggested by
+  Huang Wei)
+- Replace dev_warn() with dev_warn_once() in
+  ideapad_camera_switch_report() so that a persistent registration failure
+  does not log a warning on every toggle (suggested by Huang Wei)
+- Link to v1: https://patch.msgid.link/SN6PR19MB23039910DD1918BEE3825BAFFC862@SN6PR19MB2303.namprd19.prod.outlook.com
  drivers/platform/x86/lenovo/ideapad-laptop.c | 12 ++++++++++++
  1 file changed, 12 insertions(+)
 

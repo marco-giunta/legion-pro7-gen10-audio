@@ -59,7 +59,7 @@ After logging out and back in, the Smart Connect key will appear as F20 in KDE's
 
 
 ## Camera switch reporting
-**Status:** [submitted upstream, v3 soon to be sent in collaboration with a lenovo driver maintainer](https://lore.kernel.org/platform-driver-x86/SN6PR19MB23039910DD1918BEE3825BAFFC862@SN6PR19MB2303.namprd19.prod.outlook.com/T/#u)
+**Status:** [v3 submitted upstream in collaboration with a lenovo driver maintainer, pending review](https://lore.kernel.org/platform-driver-x86/20260924-ideapad-laptop-camera-sw-v3-1-922ea6a9fff4@rong.moe/T/#u)
 
 On the Legion Pro 7 16AFR10H and similar 2025 Lenovo laptops, a physical switch on the side disables the camera at the firmware level. Without this patch the corresponding WMI events are reported as `KEY_UNKNOWN`; the patch reports them as `SW_CAMERA_LENS_COVER`, consistent with how `lenovo-wmi-camera` handles the equivalent switch on other Lenovo laptops.
 
