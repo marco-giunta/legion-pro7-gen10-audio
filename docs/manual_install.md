@@ -40,7 +40,7 @@ If this doesn't return "OK", it means either file got corrupted in the download.
 ```bash
 sudo cp -f aw88399_acf.bin /lib/firmware/aw88399_acf.bin
 ```
-- If you own the AMD model and wish to enable Wi-Fi and Bluetooth using jetm's [mt7927 patch](https://github.com/jetm/mediatek-mt7927-dkms), you will also need the MediaTek WiFi/BT firmware binaries. These files have been submitted to the `linux-firmware` repository alongside jetm's kernel submission:
+- If you own the AMD model and wish to enable Wi-Fi and Bluetooth using [the mt7927 driver that is already upstream in kernels 7.2+](https://github.com/jetm/mediatek-mt7927-dkms), you will also need the MediaTek WiFi/BT firmware binaries. These files have been submitted to the `linux-firmware` repository alongside the driver's kernel submission:
   - **WiFi firmware** (`WIFI_MT6639_PATCH_MCU_2_1_hdr.bin`, `WIFI_RAM_CODE_MT6639_2_1.bin`): [accepted upstream](https://gitlab.com/kernel-firmware/linux-firmware/-/merge_requests/1055) and already shipped by Fedora's `linux-firmware` package as `.bin.xz` files. Check if you already have `/lib/firmware/mediatek/mt7927/WIFI_MT6639_PATCH_MCU_2_1_hdr.bin.xz` and `/lib/firmware/mediatek/mt7927/WIFI_RAM_CODE_MT6639_2_1.bin.xz` (running `dnf update` may be needed first); if you do, you don't need to install these files manually.
   - **Bluetooth firmware** (`BT_RAM_CODE_MT6639_2_1_hdr.bin`): [not yet accepted upstream](https://gitlab.com/kernel-firmware/linux-firmware/-/merge_requests/946), so this still needs to be installed manually.
 
@@ -115,3 +115,31 @@ rpm -qa | grep legion
 # Test audio
 speaker-test -c 2 -t wav
 ```
+
+As an optional diagnostics step, you can run
+```sh
+sudo dmesg | grep -Ei "aw88399|AWDZ8399|alc269"
+```
+
+This is what a successfully running AW88399 driver looks like (apart from the SSID, which will differ depending on the actual laptop):
+```
+[    6.165866] Serial bus multi instantiate pseudo device driver AWDZ8399:00: Instantiated 2 I2C devices.
+[    6.744158] aw88399-hda i2c-AWDZ8399:00-aw88399-hda.0: Applying properties for SSID 17AA3939
+[    6.940885] aw88399-hda i2c-AWDZ8399:00-aw88399-hda.0: AW88399 HDA side codec registered successfully
+[    6.940968] aw88399-hda i2c-AWDZ8399:00-aw88399-hda.1: Applying properties for SSID 17AA3939
+[    7.136559] aw88399-hda i2c-AWDZ8399:00-aw88399-hda.1: AW88399 HDA side codec registered successfully
+[    7.265367] snd_hda_codec_alc269 hdaudioC1D0: ALC287: picked fixup  for codec SSID 17aa:3938
+[    7.265482] aw88399-hda i2c-AWDZ8399:00-aw88399-hda.0: AW88399 Bound - SSID: 17AA3939, channel: 0
+[    7.265484] snd_hda_codec_alc269 hdaudioC1D0: bound i2c-AWDZ8399:00-aw88399-hda.0 (ops aw88399_hda_comp_ops [snd_hda_scodec_aw88399])
+[    7.265488] aw88399-hda i2c-AWDZ8399:00-aw88399-hda.1: AW88399 Bound - SSID: 17AA3939, channel: 1
+[    7.265488] snd_hda_codec_alc269 hdaudioC1D0: bound i2c-AWDZ8399:00-aw88399-hda.1 (ops aw88399_hda_comp_ops [snd_hda_scodec_aw88399])
+[    7.265804] snd_hda_codec_alc269 hdaudioC1D0: autoconfig for ALC287: line_outs=2 (0x14/0x17/0x0/0x0/0x0) type:speaker
+[    7.265806] snd_hda_codec_alc269 hdaudioC1D0:    speaker_outs=0 (0x0/0x0/0x0/0x0/0x0)
+[    7.265806] snd_hda_codec_alc269 hdaudioC1D0:    hp_outs=1 (0x21/0x0/0x0/0x0/0x0)
+[    7.265807] snd_hda_codec_alc269 hdaudioC1D0:    mono: mono_out=0x0
+[    7.265807] snd_hda_codec_alc269 hdaudioC1D0:    inputs:
+[    7.265808] snd_hda_codec_alc269 hdaudioC1D0:      Internal Mic=0x12
+[    7.265809] snd_hda_codec_alc269 hdaudioC1D0:      Headset Mic=0x19
+```
+
+Note that, just like in the above example taken from my 16AFR10H, the same device can have different, consecutive IDs for the codec and the ACPI AWDZ8399 entry. This is normal and not cause for concern (in fact, it's precisely why each supported model has two consecutive IDs associated to it in the driver).
