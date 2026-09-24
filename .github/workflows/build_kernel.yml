@@ -101,7 +101,10 @@ jobs:
                     cp -r /tmp/kernel-src /tmp/kernel-src-patched
 
                     for p in ${EXTRA_PATCHES}; do
-                        NAME=$(basename "${p}" .patch | sed 's/^[0-9]*-//')
+                        NAME=$(grep '^Subject:' "${p}" | sed 's/.*: //')
+                        if [ -z "${NAME}" ]; then
+                            NAME=$(basename "${p}" .patch | sed 's/^[0-9]*-//')
+                        fi
                         echo "  ${p} -> ${NAME}"
                         patch -p1 -d /tmp/kernel-src-patched --no-backup-if-mismatch < "${p}" \
                             || { echo "ERROR: patch failed to apply: ${p}"; exit 1; }
