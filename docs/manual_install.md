@@ -6,11 +6,24 @@ Check your SSID:
 ```bash
 grep -l "Codec: Realtek" /proc/asound/card*/codec#* | xargs grep -i "Subsystem Id"
 ```
-You should see a line like `Subsystem Id: 0x17aa<...>`, where `<...>` equals 4 characters. These are the IDs currently supported by the patch:
-- `0x17aa3906`, `0x17aa3907` - Legion Pro 7i Gen 10 / Y9000P 2025 (16IAX10H / IAX10, Intel)
-- `0x17aa3927`, `0x17aa3928` - Legion R9000P 2025 (ADR10, AMD)
-- `0x17aa3936`, `0x17aa3937` - Legion R9000P 2025 (ADR10H, AMD)
-- `0x17aa3938`, `0x17aa3939` - Legion Pro 7 Gen 10 (16AFR10H, AMD)
+You'll see a line like `Subsystem Id: 0x17aa<4 characters>`, representing your device's codec subsytem ID (SSID). These are the IDs currently supported by the patch:
+
+| codec ID 1 | codec ID 2 | Model ID | Model Name | CPU | DMI |
+|------------|------------|----------|------------|-----|-----|
+| 0x17aa3906 | 0x17aa3907 | 16IAX10H / IAX10 | Legion Pro 7i Gen 10 / Y9000P 2025 | Intel | 83F5 |
+| 0x17aa3927 | 0x17aa3928 | ADR10 | Legion R9000P 2025 | AMD | 83LV |
+| 0x17aa3936 | 0x17aa3937 | ADR10H | Legion R9000P 2025 | AMD | 83RV |
+| 0x17aa3938 | 0x17aa3939 | 16AFR10H | Legion Pro 7 Gen 10 | AMD | 83RU |
+
+Notice that each supported model can have one of two codec IDs; it doesn't matter which one you get, they are simply different board revisions of the same device.
+
+Also, the only thing that matters is the codec ID; if your Legion has a different commercial name but the same codec ID as one of these, the patch will treat the two identically. The names are mostly included for reference.
+
+If you want, you can check your Model ID/name and DMI using
+```sh
+cat /sys/class/dmi/id/product_family
+cat /sys/class/dmi/id/product_name
+```
 
 If your ID matches one of these, proceed to step 1.
 
