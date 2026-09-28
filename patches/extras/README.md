@@ -70,6 +70,8 @@ The main benefit to this patch is that, if you're using the `<I248>` trick above
 ## Lenovo Legion Spectrum keyboard backlight driver (`hid-lenovo-legion-spectrum`)
 **Status:** WIP, soon to be submitted upstream for review (HID and platform/x86 subsystems)
 
+[***All credit for reverse engineering the USB HID protocol goes to the LenovoLegionToolkit project***](https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/tree/master) (no actual code from that project was used here, just the knowledge about the protocol).
+
 The Legion Pro 7 16AFR10H and similar Gen 10 Legions drive their RGB keyboard backlight with an ITE 8258 USB controller (USB ID `048d:c197`). The firmware's ACPI and WMI backlight methods are stubs on these machines, so Linux currently exposes no keyboard backlight control at all.
 
 <img src="img/before.png" width="400">

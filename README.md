@@ -62,7 +62,7 @@ To determine whether your laptop is a candidate for this driver, see **Step 0** 
 
 - *mt7927 patch*: all credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms).
 
-- *Smart Connect key fix, Camera Privacy switch fix, and keyboard backlight driver*: [these are all mine](patches/extras/).
+- *Smart Connect key fix, Camera Privacy switch fix, and keyboard backlight driver*: [these patches are all by me](patches/extras/). Credit for reverse engineering the USB HID protocol goes to the [LenovoLegionToolkit project](https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/tree/master).
 
 More detailed credits are available [here](#credits).
 
@@ -318,6 +318,10 @@ It's been an amazing journey; I learned a lot, got to meet and collaborate with 
 
 ### mt7927 patch (pre-7.2 releases)
 All credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms); I haven't made any meaningful changes to their work. The only difference between their repo and the contents of my [patches/mt7927](patches/mt7927) folder is that I repackaged the split patches in a single file, since this repo is focused on building a patched kernel rather than upstream review or DKMS packaging.
+
+### Lenovo Legion Spectrum keyboard brightness driver
+
+[All credit for reverse engineering the USB HID protocol goes to the LenovoLegionToolkit project](https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/tree/master) (no actual code from that project was used in [patches/extras](patches/extras), just the knowledge about the protocol).
 
 ---
 ## License
