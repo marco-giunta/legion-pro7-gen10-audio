@@ -4,7 +4,7 @@
 
 > Patched Linux audio drivers for Lenovo Legion Pro 7/7i Gen 10 (AMD & Intel). Includes Fedora RPM packages and installation automation.
 >
-> [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model (pre-7.2 releases), as well as [non-audio related, Legion-specific fixes](patches/extras) to fix some broken keyboard functionality.
+> [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model (pre-7.2 releases), as well as [non-audio related, Legion-specific fixes](patches/extras) to fix some broken keyboard functionality and add keyboard backlight support.
 
 > [!NOTE]
 > **The AW88399 HDA side codec driver has been [merged into the Linux kernel](https://github.com/torvalds/linux/commit/e5c91aac491def6ab3f90c4cc246e3fcb0f8f058) and [is now shipping starting with 7.3-rc1](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/diff/sound/hda/codecs/side-codecs/aw88399_hda.c?id=v7.3-rc1&id2=v7.2).** Once the final 7.3 kernel is released, users will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/README.md) for historical info about the upstream submission.
@@ -62,7 +62,7 @@ To determine whether your laptop is a candidate for this driver, see **Step 0** 
 
 - *mt7927 patch*: all credit goes to [jetm and contributors](https://github.com/jetm/mediatek-mt7927-dkms).
 
-- *Smart Connect key & Camera Privacy switch fixes*: [these are all mine](patches/extras/).
+- *Smart Connect key fix, Camera Privacy switch fix, and keyboard backlight driver*: [these are all mine](patches/extras/).
 
 More detailed credits are available [here](#credits).
 
@@ -72,7 +72,7 @@ More detailed credits are available [here](#credits).
 - **Comprehensive self-compile guide** for Fedora
 - **[mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms)** to enable Wi-Fi and Bluetooth on the AMD model (pre-7.2 releases)
 - **easyeffects profiles** to restore some Windows-like features
-- **[extra patches](patches/extras/)** to allow for correct remapping of the Smart Connect (F11) key, without interference from the camera privacy switch
+- **[extra patches](patches/extras/)** to allow for correct remapping of the Smart Connect (F11) key, properly register the camera privacy switch's presence in userspace, as well as a new driver to allow for the keyboard backlight brightness to be controlled from the OS (i.e. without the Fn+Up/Down combos)
 
 The actual AW88399 patch development is now shared between this fork and the original repo, as I now maintain both.
 
@@ -119,7 +119,7 @@ This script will guide you through installing the required firmware, the NVIDIA 
 If you wish to customize the install (for example, to install the proprietary NVIDIA driver from a different repo, or to use open source ones instead), please refer to the ["manual installation"](#manual-installation) section below.
 
 > [!IMPORTANT]
-> Beyond the audio fix (and the WiFi+BT mt7927 patch on pre-7.2 kernels), the prebuilt RPMs also include patches for other Legion-specific kernel behavior that are pending upstream inclusion or have yet to reach the stable kernel. See [the `patches/extras/` folder](patches/extras/) for details on what is included and why, including workarounds for remapping the Smart Connect key (F11) and fixing the camera privacy switch under Linux.
+> Beyond the audio fix (and the WiFi+BT mt7927 patch on pre-7.2 kernels), the prebuilt RPMs also include patches for other Legion-specific kernel behavior that are pending upstream inclusion or have yet to reach the stable kernel. See [the `patches/extras/` folder](patches/extras/) for details on what is included and why, including workarounds for remapping the Smart Connect key (F11), fixing the camera privacy switch under Linux, and properly enabling support for the keyboard brightness controls in the OS.
 
 > [!TIP]
 > As with any script you run with elevated privileges, you are encouraged to [read it](scripts/install.sh) before running it. The script is short, commented, and does only what is described above.

@@ -1,0 +1,333 @@
+From a5ccee869143509ba5353d871b31004572b78749 Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Sun, 27 Sep 2026 21:06:03 +0200
+Subject: [PATCH 2/4] HID: Add driver for Lenovo Legion Spectrum keyboard
+ backlight
+
+Certain Lenovo Legion Gen 10 laptops, such as the Legion Pro 7 16AFR10H,
+drive the keyboard backlight with an ITE 8258 USB controller (048d:c197),
+which also hosts the internal keyboard.
+The firmware's ACPI and WMI keyboard backlight methods are stubs on
+these machines, so the backlight is currently not exposed to userspace
+by the ideapad-laptop driver.
+
+Add a driver exposing the brightness as the legion::kbd_backlight LED
+class device, using the controller's vendor feature report. The LED
+offers off plus the three levels used by the firmware's Fn+Up/Down
+hotkeys (hardware values 0, 3, 6 and 9).
+
+Per-key RGB and effects are left to userspace via hidraw.
+
+The protocol was reverse-engineered by the LenovoLegionToolkit
+project [1].
+
+[1] https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit
+
+Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
+---
+ drivers/hid/Kconfig                      |  12 ++
+ drivers/hid/Makefile                     |   1 +
+ drivers/hid/hid-ids.h                    |   1 +
+ drivers/hid/hid-lenovo-legion-spectrum.c | 243 +++++++++++++++++++++++
+ 4 files changed, 257 insertions(+)
+ create mode 100644 drivers/hid/hid-lenovo-legion-spectrum.c
+
+diff --git a/drivers/hid/Kconfig b/drivers/hid/Kconfig
+index c43e824428f0..c130bd8a7256 100644
+--- a/drivers/hid/Kconfig
++++ b/drivers/hid/Kconfig
+@@ -661,6 +661,18 @@ config HID_LENOVO_GO_S
+ 	S. Say M here to compile this driver as a module. The module will be called
+ 	hid-lenovo-go-s.
+ 
++config HID_LENOVO_LEGION_SPECTRUM
++	tristate "HID Driver for Lenovo Legion Spectrum keyboard backlight"
++	depends on USB_HID
++	depends on LEDS_CLASS
++	help
++	  Keyboard backlight brightness control for Lenovo Legion laptops
++	  with the ITE 8258 "Spectrum" RGB keyboard, exposed as the
++	  legion::kbd_backlight LED class device.
++
++	  To compile this driver as a module, choose M here: the module
++	  will be called hid-lenovo-legion-spectrum.
++
+ config HID_LETSKETCH
+ 	tristate "Letsketch WP9620N tablets"
+ 	depends on USB_HID
+diff --git a/drivers/hid/Makefile b/drivers/hid/Makefile
+index 48a863b245ee..2e8434563e58 100644
+--- a/drivers/hid/Makefile
++++ b/drivers/hid/Makefile
+@@ -79,6 +79,7 @@ obj-$(CONFIG_HID_LCPOWER)	+= hid-lcpower.o
+ obj-$(CONFIG_HID_LENOVO)	+= hid-lenovo.o
+ obj-$(CONFIG_HID_LENOVO_GO)	+= hid-lenovo-go.o
+ obj-$(CONFIG_HID_LENOVO_GO_S)	+= hid-lenovo-go-s.o
++obj-$(CONFIG_HID_LENOVO_LEGION_SPECTRUM) += hid-lenovo-legion-spectrum.o
+ obj-$(CONFIG_HID_LETSKETCH)	+= hid-letsketch.o
+ obj-$(CONFIG_HID_LOGITECH)	+= hid-logitech.o
+ obj-$(CONFIG_HID_LOGITECH)	+= hid-lg-g15.o
+diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
+index 9a473f72c8cb..d174927265db 100644
+--- a/drivers/hid/hid-ids.h
++++ b/drivers/hid/hid-ids.h
+@@ -768,6 +768,7 @@
+ #define I2C_DEVICE_ID_ITE_LENOVO_YOGA_SLIM_7X_KEYBOARD	0x8987
+ #define I2C_DEVICE_ID_ITE_LENOVO_YOGA_SLIM_7X_G11_KEYBOARD	0x83db
+ #define USB_DEVICE_ID_ITE8595		0x8595
++#define USB_DEVICE_ID_ITE_LEGION_C197	0xc197
+ #define USB_DEVICE_ID_ITE_MEDION_E1239T	0xce50
+ 
+ #define USB_VENDOR_ID_QHE		0x1a86
+diff --git a/drivers/hid/hid-lenovo-legion-spectrum.c b/drivers/hid/hid-lenovo-legion-spectrum.c
+new file mode 100644
+index 000000000000..96094cdbf741
+--- /dev/null
++++ b/drivers/hid/hid-lenovo-legion-spectrum.c
+@@ -0,0 +1,243 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Keyboard backlight brightness driver for Lenovo Legion "Spectrum" RGB keyboards
++ *
++ * Based on the HID protocol reverse-engineered by the LenovoLegionToolkit team:
++ * https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/
++ */
++
++#include <linux/device.h>
++#include <linux/hid.h>
++#include <linux/leds.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++
++#include "hid-ids.h"
++
++/*
++ * All commands from the vendor protocol use feature report 7 (960 bytes, zero-padded):
++ * [0x07, op, 0xc0, 0x03, arg]. A query is a SET_REPORT selecting the op, followed by
++ * a GET_REPORT whose reply echoes the op in byte 1 and carries the value in byte 4.
++ */
++
++#define SPECTRUM_REPORT_ID		0x07
++#define SPECTRUM_REPORT_LEN		960
++
++#define SPECTRUM_HDR_B2			0xc0
++#define SPECTRUM_HDR_B3			0x03
++
++#define SPECTRUM_OP_GET_BRIGHTNESS	0xcd
++#define SPECTRUM_OP_SET_BRIGHTNESS	0xce
++#define SPECTRUM_OP_COMPATIBILITY	0xd1
++
++/*
++ * The keyboard supports off + 3 brightness levels. These are represented by hardware as
++ * { 0, 3, 6, 9 }, mapping to { off, low, medium, high }
++ */
++#define SPECTRUM_HW_MAX_BRIGHTNESS	9
++#define SPECTRUM_LED_MAX_BRIGHTNESS	3
++#define SPECTRUM_LEVEL_STEP		(SPECTRUM_HW_MAX_BRIGHTNESS / SPECTRUM_LED_MAX_BRIGHTNESS)
++
++struct spectrum_kbd {
++	struct hid_device *hdev;
++	struct led_classdev cdev;
++	struct mutex lock;		/* protects the buffer and SET/GET pairs */
++	u8 *buf;
++	bool initialized;		/* init succeeded: remove() must undo it */
++};
++
++/*
++ * Send one command. If @reply is true, read the answer back and return the
++ * value byte (pos. 4), otherwise return 0; negative errno on failure.
++ */
++static int spectrum_cmd(struct spectrum_kbd *kbd, u8 op, const u8 arg, bool reply)
++{
++	u8 *buf = kbd->buf;
++	int ret;
++
++	lockdep_assert_held(&kbd->lock);
++
++	memset(buf, 0, SPECTRUM_REPORT_LEN);
++	buf[0] = SPECTRUM_REPORT_ID;
++	buf[1] = op;
++	buf[2] = SPECTRUM_HDR_B2;
++	buf[3] = SPECTRUM_HDR_B3;
++	buf[4] = arg;
++
++	ret = hid_hw_raw_request(kbd->hdev, SPECTRUM_REPORT_ID, buf,
++				 SPECTRUM_REPORT_LEN, HID_FEATURE_REPORT,
++				 HID_REQ_SET_REPORT);
++	if (ret < 0)
++		return ret;
++	if (!reply)
++		return 0;
++
++	ret = hid_hw_raw_request(kbd->hdev, SPECTRUM_REPORT_ID, buf,
++				 SPECTRUM_REPORT_LEN, HID_FEATURE_REPORT,
++				 HID_REQ_GET_REPORT);
++	if (ret < 0)
++		return ret;
++
++	/*
++	 * Replies echo the op in byte 1. Check for a mismatch, which
++	 * means a hidraw user slipped a request in between our SET and GET.
++	 */
++	if (ret < 5 || buf[1] != op) {
++		hid_dbg(kbd->hdev, "unexpected reply to op 0x%02x: len %d op 0x%02x\n",
++			op, ret, buf[1]);
++		return -EIO;
++	}
++
++	return buf[4];
++}
++
++static int spectrum_set_brightness_level(struct spectrum_kbd *kbd, u8 value)
++{
++	guard(mutex)(&kbd->lock);
++
++	return spectrum_cmd(kbd, SPECTRUM_OP_SET_BRIGHTNESS,
++			    value * SPECTRUM_LEVEL_STEP, false);
++}
++
++static int spectrum_get_brightness_level(struct spectrum_kbd *kbd)
++{
++	int ret;
++
++	guard(mutex)(&kbd->lock);
++
++	ret = spectrum_cmd(kbd, SPECTRUM_OP_GET_BRIGHTNESS, 0, true);
++
++	return (ret < 0) ? ret : min(DIV_ROUND_UP(ret, SPECTRUM_LEVEL_STEP),
++				     SPECTRUM_LED_MAX_BRIGHTNESS);
++}
++
++static int spectrum_check_compatibility(struct spectrum_kbd *kbd)
++{
++	int ret;
++
++	guard(mutex)(&kbd->lock);
++
++	ret = spectrum_cmd(kbd, SPECTRUM_OP_COMPATIBILITY, 0, true);
++	if (ret < 0)
++		return ret;
++	if (ret > 0)
++		return -ENODEV;
++
++	return 0;
++}
++
++static int spectrum_led_set(struct led_classdev *cdev, enum led_brightness value)
++{
++	struct spectrum_kbd *kbd = container_of(cdev, struct spectrum_kbd, cdev);
++
++	return spectrum_set_brightness_level(kbd, value);
++}
++
++static enum led_brightness spectrum_led_get(struct led_classdev *cdev)
++{
++	struct spectrum_kbd *kbd = container_of(cdev, struct spectrum_kbd, cdev);
++
++	return spectrum_get_brightness_level(kbd);
++}
++
++static int spectrum_init(struct spectrum_kbd *kbd)
++{
++	struct hid_device *hdev = kbd->hdev;
++	struct hid_report *report;
++	int ret;
++
++	report = hdev->report_enum[HID_FEATURE_REPORT].report_id_hash[SPECTRUM_REPORT_ID];
++	if (!report || hid_report_len(report) != SPECTRUM_REPORT_LEN)
++		return -ENODEV;
++
++	ret = spectrum_check_compatibility(kbd);
++	if (ret)
++		return ret;
++
++	kbd->cdev.name = "legion::" LED_FUNCTION_KBD_BACKLIGHT;
++	kbd->cdev.max_brightness = SPECTRUM_LED_MAX_BRIGHTNESS;
++	kbd->cdev.brightness_get = spectrum_led_get;
++	kbd->cdev.brightness_set_blocking = spectrum_led_set;
++	kbd->cdev.flags = LED_BRIGHT_HW_CHANGED | LED_RETAIN_AT_SHUTDOWN;
++
++	ret = led_classdev_register(&hdev->dev, &kbd->cdev);
++	if (ret)
++		return ret;
++
++	kbd->initialized = true;
++	return 0;
++}
++
++static void spectrum_exit(struct spectrum_kbd *kbd)
++{
++	if (!kbd->initialized)
++		return;
++
++	led_classdev_unregister(&kbd->cdev);
++	kbd->initialized = false;
++}
++
++static int spectrum_probe(struct hid_device *hdev, const struct hid_device_id *id)
++{
++	struct spectrum_kbd *kbd;
++	int ret;
++
++	kbd = devm_kzalloc(&hdev->dev, sizeof(*kbd), GFP_KERNEL);
++	if (!kbd)
++		return -ENOMEM;
++
++	kbd->buf = devm_kzalloc(&hdev->dev, SPECTRUM_REPORT_LEN, GFP_KERNEL);
++	if (!kbd->buf)
++		return -ENOMEM;
++
++	ret = devm_mutex_init(&hdev->dev, &kbd->lock);
++	if (ret)
++		return ret;
++
++	kbd->hdev = hdev;
++	hid_set_drvdata(hdev, kbd);
++
++	ret = hid_parse(hdev);
++	if (ret)
++		return ret;
++
++	ret = hid_hw_start(hdev, HID_CONNECT_DEFAULT);
++	if (ret)
++		return ret;
++
++	ret = spectrum_init(kbd);
++	if (ret) {
++		if (ret != -ENODEV)
++			hid_warn(hdev, "Could not set up keyboard backlight LED: %d\n", ret);
++		else
++			hid_info(hdev, "Vendor lighting interface not supported\n");
++	}
++
++	return 0;
++}
++
++static void spectrum_remove(struct hid_device *hdev)
++{
++	struct spectrum_kbd *kbd = hid_get_drvdata(hdev);
++
++	spectrum_exit(kbd);
++	hid_hw_stop(hdev);
++}
++
++static const struct hid_device_id spectrum_devices[] = {
++	{ HID_USB_DEVICE(USB_VENDOR_ID_ITE, USB_DEVICE_ID_ITE_LEGION_C197) },
++	{ }
++};
++MODULE_DEVICE_TABLE(hid, spectrum_devices);
++
++static struct hid_driver spectrum_driver = {
++	.name		= "hid-lenovo-legion-spectrum",
++	.id_table	= spectrum_devices,
++	.probe		= spectrum_probe,
++	.remove		= spectrum_remove,
++};
++module_hid_driver(spectrum_driver);
++
++MODULE_DESCRIPTION("Lenovo Legion Spectrum keyboard backlight driver");
++MODULE_AUTHOR("Marco Giunta <marco_giunta@outlook.it>");
++MODULE_LICENSE("GPL");
+-- 
+2.55.0
+
