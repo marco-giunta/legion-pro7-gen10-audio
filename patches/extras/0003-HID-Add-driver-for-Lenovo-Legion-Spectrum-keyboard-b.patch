@@ -86,13 +86,13 @@ index 000000000000..4ceb9e59777f
 +++ b/drivers/hid/hid-lenovo-legion-spectrum.c
 @@ -0,0 +1,315 @@
 +// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Keyboard backlight brightness driver for Lenovo Legion "Spectrum" RGB keyboards
-+ *
-+ * Based on the HID protocol reverse-engineered by the LenovoLegionToolkit project:
-+ * https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/
-+ * (opcodes from LenovoLegionToolkit.Lib/Native.cs)
-+ */
++//
++// Keyboard backlight brightness driver for Lenovo Legion "Spectrum" RGB keyboards
++//
++// Based on the HID protocol reverse-engineered by the LenovoLegionToolkit project:
++// https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/
++// (opcodes from LenovoLegionToolkit.Lib/Native.cs)
++//
 +
 +#include <linux/device.h>
 +#include <linux/hid.h>
