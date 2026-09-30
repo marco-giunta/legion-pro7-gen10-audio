@@ -82,6 +82,11 @@ once the firmware submission is further along. In the meantime, if you've tested
 
 ## Changelog
 
+### v0.3
+- Updated cover letter with references to the awinic firmware submission.
+- Rebased combined patch on the latest driver version.
+- Rebased series on commit `bde6bed34104463c3c2e8109a5a0212ea9e2cc30` from `tiwai/sound`.
+
 ### v0.2
 - Removed the ASoC error log cleanups, as they would be better submitted as part of a separate series. Here they conflate unrelated stuff. Only the addition of the missing newlines is left in.
 - Moved the successful firmware loading log to the HDA driver where it belongs (the ASoC firmware behavior is unchanged, so there is no reason to promote its `dev_dbg` into `dev_info` as well).
