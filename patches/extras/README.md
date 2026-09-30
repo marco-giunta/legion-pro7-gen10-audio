@@ -91,6 +91,8 @@ The keyboard backlight will be exposed as `legion::kbd_backlight` under `/sys/cl
 cat /sys/class/leds/legion::kbd_backlight/brightness
 # Set brightness (0 = off, 1-3 = low/medium/high)
 echo 2 | sudo tee /sys/class/leds/legion::kbd_backlight/brightness
+# Alternatively, you can also use brightnessctl
+brightnessctl --device legion::kbd_backlight set 2
 ```
 
 Fn+Up and Fn+Down change brightness in firmware as usual; the driver reads the new level back and reports it via brightness_hw_changed, so a desktop environment with UPower integration (e.g. KDE Plasma) will show a popup notification.
