@@ -2,14 +2,7 @@
 
 ## Status
 
-Lenovo has authorized redistribution of the AW88399 ACF firmware files for their Legion platforms, and AWINIC is currently working on providing the license file and firmware binaries for submission to the [`linux-firmware`](https://gitlab.com/kernel-firmware/linux-firmware) repository.
-
-Specifically, Mark Pearson from Lenovo's Linux team confirmed that AWINIC has Lenovo's consent to redistribute the firmware. Following discussions with Mark to confirm the necessary legal authorization, AWINIC is now preparing the firmware and license files for submission to the `linux-firmware` repository. This includes reviewing the repository's submission requirements, such as preparing an appropriate license and determining a suitable naming convention for the firmware files.
-
-In the meantime, this folder contains a follow-up kernel patch series that adds per-model firmware file naming to the AW88399 HDA side codec driver, making it compatible with the `linux-firmware` repository's per-device naming convention.
-
-> [!NOTE]
-> The firmware file naming convention adopted in this series (`awinic/aw88399_acf_<ssid>.bin`) is a proposal based on existing `linux-firmware` conventions and is subject to change pending agreement with AWINIC. From a testing perspective this doesn't matter; the convention is trivial to adjust in the driver code.
+[AWINIC has submitted the required firmware on behalf of Lenovo to the linux-firmware repo; the MR is currently pending for review.](https://lore.kernel.org/linux-firmware/4b70e056-89d9-4d92-8ecb-ecb4c7d48c8a@app.fastmail.com/T/#t)
 
 ## Folder structure
 
@@ -59,7 +52,7 @@ The series currently consists of 2 patches:
 
    Replace `17aa3938` with your own SSID.
 
-3. **Apply the patch and rebuild the kernel.** Follow the same process you used to install the original patched kernel, but using the combined patch from this folder instead.
+3. **Apply the patch and rebuild the kernel.** Follow the same process you used to install the original patched kernel, but using the combined patch from this folder instead for kernel 7.2. Alternatively, individually apply the patches from the `series/` folder to any 7.3-rc1+ source.
 
 4. **Reboot and verify.** Check dmesg for the new firmware loading message:
 
@@ -77,8 +70,7 @@ The series currently consists of 2 patches:
 
 ## Reporting results
 
-A dedicated tracking issue will be opened on [nadimkobeissi/16iax10h-linux-sound-saga](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga)
-once the firmware submission is further along. In the meantime, if you've tested this and want to share results, provide feedback on the code, or give me your Tested-by tag beforehand, feel free to email me directly (address in the git commits).
+If you've tested this and want to share results, provide feedback on the code, or give me your Tested-by tag beforehand, feel free to email me directly (address in the git commits).
 
 ## Changelog
 
