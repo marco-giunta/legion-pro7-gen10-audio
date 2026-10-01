@@ -9,7 +9,7 @@ This guide is based on [these official Fedora docs instructions](https://docs.fe
 ## Step 1: Obtain the kernel source
 First compare the latest available patch with the latest stable kernel for your Fedora install by checking [this page](https://packages.fedoraproject.org/pkgs/kernel/kernel/). If they match, download the latest kernel using `fedpkg` (option A); if they don't, or if you need a different kernel version, use `koji` instead (option B).
 
-### A) Download the latest stable kernel with `fedpkg`
+### A) Download the latest stable kernel with `fedpkg` (recommended)
 - Install `fedpkg`:
 ```bash
 sudo dnf install fedpkg
@@ -73,12 +73,10 @@ If you own the AMD model and wish to include [jetm's mt7927 patch](https://githu
 > Note that you may still want to include some non-audio patches (e.g. [see here](../patches/extras/)); in this case, simply appending the contents of these extra `.patch` files to the `linux-kernel-test.patch` file is fine.
 
 ### Setting up kernel config parameters
-Inside the `kernel` folder, locate and open the file called `kernel-local`; copy paste there the following lines (you can safely ignore the comment lines starting with `#` at the top of the file):
+Inside the `kernel` folder, locate and open the file called `kernel-local`; copy paste there the following line (you can safely ignore the comment lines starting with `#` at the top of the file):
 ```
-CONFIG_SND_HDA_SCODEC_AW88399=m
 CONFIG_SND_HDA_SCODEC_AW88399_I2C=m
 ```
-Please note that you do *not* have to add either `CONFIG_SND_SOC_AW88399=m` or any of the Intel/AMD specific parameters from the original guide, as these are *already included by default by Fedora*. Feel free to inspect `kernel/kernel-x86_64-fedora.config`; you'll see e.g. that `CONFIG_SND_SOC_AW88399=m` is already there. Indeed, the above 2 lines are simply the two new config parameters added by Lyapsus; `fedpkg` will take the contents of `kernel-local` and add it to the preexisting default Fedora configs.
 
 ### Defining the `buildid`
 Before starting the build process, it's important to choose a meaningful custom build id for the patched kernel; this string will be used to name the RPM packages, how they show up in `dnf`, and how the patched kernel is named in the grub boot menu. Despite this feature being disabled by default, I recommend using it, as it will allow you to easily tell the patched kernel from the stock one, allowing both of them to coexist without issues - which is a good idea, so you can keep around the default Fedora kernel for backup.
@@ -117,11 +115,11 @@ By using these parameters, you can cut the compilation time from ~50-60 minutes 
 Once the build process finished with no errors, you will see a new `x86_64` folder inside the `kernel` folder, full of a large number of RPMs. Do *not* install them all; we don't need most of them, and a blanket install will likely fail either way because of insufficient space in your boot partition. 
 Instead, navigate to the `kernel` directory, then use:
 ```bash
-sudo dnf install --nogpgcheck ./x86_64/kernel-6*.rpm ./x86_64/kernel-core-*.rpm ./x86_64/kernel-modules-*.rpm ./x86_64/kernel-devel-*.rpm
+sudo dnf install --nogpgcheck ./x86_64/kernel-7*.rpm ./x86_64/kernel-core-*.rpm ./x86_64/kernel-modules-*.rpm ./x86_64/kernel-devel-*.rpm
 ```
 If you recompiled a the same kernel version with the same buildid and want to force a reinstall, you can instead use:
 ```bash
-sudo rpm -ivh --force ./x86_64/kernel-6*.rpm ./x86_64/kernel-core-*.rpm ./x86_64/kernel-modules-*.rpm ./x86_64/kernel-devel-*.rpm
+sudo rpm -ivh --force ./x86_64/kernel-7*.rpm ./x86_64/kernel-core-*.rpm ./x86_64/kernel-modules-*.rpm ./x86_64/kernel-devel-*.rpm
 ```
 
 *Why only these packages are necessary:*
