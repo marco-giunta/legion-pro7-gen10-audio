@@ -8,6 +8,7 @@ Use the ACPI subsystem ID to construct per-model firmware filename
 systems. This makes the driver compatible with the linux-firmware
 repository's per-device naming convention.
 
+Tested-by: Xia Yun'an <imitoy@imitoy.top>
 Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
 ---
  sound/hda/codecs/side-codecs/aw88399_hda.c | 16 ++++++++++++++--

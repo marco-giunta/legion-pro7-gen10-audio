@@ -77,6 +77,7 @@ If you've tested this and want to share results, provide feedback on the code, o
 ### v0.3
 - Updated cover letter with references to the awinic firmware submission.
 - Rebased combined patch on the latest driver version.
+- Added imitoy's Tested-by tag.
 - Rebased series on commit `bde6bed34104463c3c2e8109a5a0212ea9e2cc30` from `tiwai/sound`.
 
 ### v0.2

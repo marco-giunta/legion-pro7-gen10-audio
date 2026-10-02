@@ -11,6 +11,7 @@ current behavior. Also add missing newlines to the modified log messages.
 This allows the HDA side codec driver to request per-model firmware files
 in the next patch.
 
+Tested-by: Xia Yun'an <imitoy@imitoy.top>
 Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
 ---
  include/sound/aw88399.h                    |  2 +-
