@@ -1,69 +1,77 @@
-From 62a18cf9f1a9ffaa5af02e982ff20b159dd115c9 Mon Sep 17 00:00:00 2001
+From fd08d0f2ddce058c10876703a9fde44f404107e5 Mon Sep 17 00:00:00 2001
 From: Marco Giunta <marco_giunta@outlook.it>
-Date: Tue, 29 Sep 2026 01:14:46 +0200
-Subject: [PATCH 3/3] HID: Add driver for Lenovo Legion Spectrum keyboard
+Date: Fri, 2 Oct 2026 23:56:30 +0200
+Subject: [PATCH 1/2] HID: Add driver for Lenovo Legion Spectrum keyboard
  backlight
 
 Certain Lenovo Legion Gen 10 laptops, such as the Legion Pro 7 16AFR10H,
 drive the keyboard backlight with an ITE 8258 USB controller (048d:c197),
 which also hosts the internal keyboard.
-The firmware's ACPI and WMI keyboard backlight methods are stubs on
-these machines, so the backlight is currently not exposed to userspace
-by the ideapad-laptop driver.
+The firmware's ACPI and WMI keyboard backlight methods are stubs on these
+machines, so the backlight is currently not exposed to userspace by the
+ideapad-laptop driver.
 
-Add a driver exposing the brightness as the legion::kbd_backlight LED
-class device, using the controller's vendor feature report. The LED
-offers off plus the three levels used by the firmware's Fn+Up/Down
-hotkeys (hardware values 0, 3, 6 and 9).
+Add a driver exposing the brightness as the :kbd_backlight LED class
+device, using the controller's vendor feature report. The LED offers
+"off" plus the three levels used by the firmware's Fn+Up/Down hotkeys
+(hardware values 0, 3, 6, 9).
+Brightness changes made by the firmware (Fn+Up/Down) are reported through
+led_classdev_notify_brightness_hw_changed, using the input report
+the controller sends on every state change.
+
+On models where the same controller is used with a single-color backlight,
+it answers the driver's compatibility query with 1, and the backlight
+remains with ideapad-laptop.
+
 Per-key RGB and effects are left to userspace via hidraw.
 
-The protocol was reverse-engineered by the LenovoLegionToolkit
-project (see LenovoLegionToolkit.Lib/Native.cs) [1].
+The protocol was reverse-engineered by the LenovoLegionToolkit project
+(see LenovoLegionToolkit.Lib/Native.cs) [1].
 
 [1] https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit
 
 Assisted-by: LLM
 Signed-off-by: Marco Giunta <marco_giunta@outlook.it>
 ---
- drivers/hid/Kconfig                      |  12 +
- drivers/hid/Makefile                     |   1 +
- drivers/hid/hid-ids.h                    |   1 +
- drivers/hid/hid-lenovo-legion-spectrum.c | 315 +++++++++++++++++++++++
- 4 files changed, 329 insertions(+)
- create mode 100644 drivers/hid/hid-lenovo-legion-spectrum.c
+ drivers/hid/Kconfig               |  12 ++
+ drivers/hid/Makefile              |   1 +
+ drivers/hid/hid-ids.h             |   1 +
+ drivers/hid/hid-lenovo-spectrum.c | 324 ++++++++++++++++++++++++++++++
+ 4 files changed, 338 insertions(+)
+ create mode 100644 drivers/hid/hid-lenovo-spectrum.c
 
 diff --git a/drivers/hid/Kconfig b/drivers/hid/Kconfig
-index c43e824428f0..c130bd8a7256 100644
+index c43e824428f0..4490d849ac2f 100644
 --- a/drivers/hid/Kconfig
 +++ b/drivers/hid/Kconfig
 @@ -661,6 +661,18 @@ config HID_LENOVO_GO_S
  	S. Say M here to compile this driver as a module. The module will be called
  	hid-lenovo-go-s.
  
-+config HID_LENOVO_LEGION_SPECTRUM
++config HID_LENOVO_SPECTRUM
 +	tristate "HID Driver for Lenovo Legion Spectrum keyboard backlight"
 +	depends on USB_HID
 +	depends on LEDS_CLASS
 +	help
 +	  Keyboard backlight brightness control for Lenovo Legion laptops
 +	  with the ITE 8258 "Spectrum" RGB keyboard, exposed as the
-+	  legion::kbd_backlight LED class device.
++	  :kbd_backlight LED class device.
 +
 +	  To compile this driver as a module, choose M here: the module
-+	  will be called hid-lenovo-legion-spectrum.
++	  will be called hid-lenovo-spectrum.
 +
  config HID_LETSKETCH
  	tristate "Letsketch WP9620N tablets"
  	depends on USB_HID
 diff --git a/drivers/hid/Makefile b/drivers/hid/Makefile
-index 48a863b245ee..2e8434563e58 100644
+index 48a863b245ee..2dbfd61cdfb7 100644
 --- a/drivers/hid/Makefile
 +++ b/drivers/hid/Makefile
 @@ -79,6 +79,7 @@ obj-$(CONFIG_HID_LCPOWER)	+= hid-lcpower.o
  obj-$(CONFIG_HID_LENOVO)	+= hid-lenovo.o
  obj-$(CONFIG_HID_LENOVO_GO)	+= hid-lenovo-go.o
  obj-$(CONFIG_HID_LENOVO_GO_S)	+= hid-lenovo-go-s.o
-+obj-$(CONFIG_HID_LENOVO_LEGION_SPECTRUM) += hid-lenovo-legion-spectrum.o
++obj-$(CONFIG_HID_LENOVO_SPECTRUM)	+= hid-lenovo-spectrum.o
  obj-$(CONFIG_HID_LETSKETCH)	+= hid-letsketch.o
  obj-$(CONFIG_HID_LOGITECH)	+= hid-logitech.o
  obj-$(CONFIG_HID_LOGITECH)	+= hid-lg-g15.o
@@ -79,26 +87,27 @@ index 9a473f72c8cb..d174927265db 100644
  #define USB_DEVICE_ID_ITE_MEDION_E1239T	0xce50
  
  #define USB_VENDOR_ID_QHE		0x1a86
-diff --git a/drivers/hid/hid-lenovo-legion-spectrum.c b/drivers/hid/hid-lenovo-legion-spectrum.c
+diff --git a/drivers/hid/hid-lenovo-spectrum.c b/drivers/hid/hid-lenovo-spectrum.c
 new file mode 100644
-index 000000000000..4ceb9e59777f
+index 000000000000..e1a37d7f5570
 --- /dev/null
-+++ b/drivers/hid/hid-lenovo-legion-spectrum.c
-@@ -0,0 +1,315 @@
++++ b/drivers/hid/hid-lenovo-spectrum.c
+@@ -0,0 +1,324 @@
 +// SPDX-License-Identifier: GPL-2.0-only
-+//
-+// Keyboard backlight brightness driver for Lenovo Legion "Spectrum" RGB keyboards
-+//
-+// Based on the HID protocol reverse-engineered by the LenovoLegionToolkit project:
-+// https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/
-+// (opcodes from LenovoLegionToolkit.Lib/Native.cs)
-+//
++/*
++ * Keyboard backlight brightness driver for Lenovo Legion "Spectrum" RGB keyboards
++ *
++ * Based on the HID protocol reverse-engineered by the LenovoLegionToolkit project:
++ * https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/
++ * (opcodes from LenovoLegionToolkit.Lib/Native.cs)
++ */
 +
 +#include <linux/device.h>
 +#include <linux/hid.h>
 +#include <linux/leds.h>
 +#include <linux/module.h>
 +#include <linux/mutex.h>
++#include <linux/spinlock.h>
 +
 +#include "hid-ids.h"
 +
@@ -127,26 +136,28 @@ index 000000000000..4ceb9e59777f
 +
 +/*
 + * Whenever the brightness or the lighting preset changes, the controller sends input
-+ * report 5 with the new state, including after writes made through this driver:
++ * report 5 with the new state:
 + *
-+ *   Brightness changed:        [0x05, 0x02, brightness]
-+ *   Brightness lowered:        [0x05, 0x03, brightness]
++ *   Brightness up:             [0x05, 0x02, brightness]
++ *   Brightness down:           [0x05, 0x03, brightness]
 + *   Preset changed (Fn+Space): [0x05, 0x01, preset], followed by [0x05, 0x02, brightness]
 + *
-+ * brightness uses the hardware scale above, preset goes from 1 to 6. The brightness
-+ * reports are used to catch changes not made through this driver, such as Fn+Up/Down.
-+ * ideapad-laptop also receives Fn+Up/Down as WMI events; they are handled here instead.
++ * brightness uses the hardware scale above, preset goes from 1 to 6. The "brightness up"
++ * report is also sent after writes made through this driver. The brightness reports are
++ * used to catch changes not made through this driver, such as Fn+Up/Down. ideapad-laptop
++ * also receives Fn+Up/Down as WMI events; they are handled here instead.
 + */
 +#define SPECTRUM_STATE_REPORT_ID	0x05
-+#define SPECTRUM_STATE_BRIGHTNESS	0x02
++#define SPECTRUM_STATE_BRIGHTNESS_UP	0x02
 +#define SPECTRUM_STATE_BRIGHTNESS_DOWN	0x03
 +
 +struct spectrum_kbd {
 +	struct hid_device *hdev;
 +	struct led_classdev cdev;
-+	struct mutex lock;		/* protects the buffer and SET/GET pairs */
++	struct mutex cmd_lock;		/* protects the buffer and SET/GET pairs */
 +	u8 *buf;
 +	bool initialized;		/* init succeeded: remove() must undo it */
++	spinlock_t level_lock;		/* protects level, shared with raw_event */
 +	u8 level;			/* last known LED level (0-3), shared with raw_event */
 +};
 +
@@ -159,7 +170,7 @@ index 000000000000..4ceb9e59777f
 +	u8 *buf = kbd->buf;
 +	int ret;
 +
-+	lockdep_assert_held(&kbd->lock);
++	lockdep_assert_held(&kbd->cmd_lock);
 +
 +	memset(buf, 0, SPECTRUM_REPORT_LEN);
 +	buf[0] = SPECTRUM_REPORT_ID;
@@ -170,7 +181,7 @@ index 000000000000..4ceb9e59777f
 +
 +	ret = hid_hw_raw_request(kbd->hdev, SPECTRUM_REPORT_ID, buf,
 +				 SPECTRUM_REPORT_LEN, HID_FEATURE_REPORT,
-+			  HID_REQ_SET_REPORT);
++				 HID_REQ_SET_REPORT);
 +	if (ret < 0)
 +		return ret;
 +	if (!reply)
@@ -178,7 +189,7 @@ index 000000000000..4ceb9e59777f
 +
 +	ret = hid_hw_raw_request(kbd->hdev, SPECTRUM_REPORT_ID, buf,
 +				 SPECTRUM_REPORT_LEN, HID_FEATURE_REPORT,
-+			  HID_REQ_GET_REPORT);
++				 HID_REQ_GET_REPORT);
 +	if (ret < 0)
 +		return ret;
 +
@@ -195,11 +206,19 @@ index 000000000000..4ceb9e59777f
 +	return buf[4];
 +}
 +
++/*
++ * The controller answers the compatibility query with 0 when it drives the
++ * keyboard lighting, which is what LenovoLegionToolkit checks for. The same
++ * controller is also used on models with a single-color backlight (e.g.
++ * Legion Y9000P IAX10), where it answers 1: there the backlight is controlled
++ * through ACPI and already exposed by ideapad-laptop as platform::kbd_backlight,
++ * so no LED is registered here.
++ */
 +static int spectrum_check_compatibility(struct spectrum_kbd *kbd)
 +{
 +	int ret;
 +
-+	guard(mutex)(&kbd->lock);
++	guard(mutex)(&kbd->cmd_lock);
 +
 +	ret = spectrum_cmd(kbd, SPECTRUM_OP_COMPATIBILITY, 0, true);
 +	if (ret < 0)
@@ -227,18 +246,17 @@ index 000000000000..4ceb9e59777f
 +	u8 old;
 +	int ret;
 +
-+	guard(mutex)(&kbd->lock);
++	guard(mutex)(&kbd->cmd_lock);
 +
-+	/*
-+	 * Update the level before sending: the controller echoes the new brightness
-+	 * in report 5, possibly before the request returns.
-+	 */
-+	old = READ_ONCE(kbd->level);
-+	WRITE_ONCE(kbd->level, value);
-+
++	scoped_guard(spinlock_irqsave, &kbd->level_lock) {
++		old = kbd->level;
++		kbd->level = value;
++	}
 +	ret = spectrum_cmd(kbd, SPECTRUM_OP_SET_BRIGHTNESS, spectrum_level_to_hw(value), false);
-+	if (ret)
-+		WRITE_ONCE(kbd->level, old);
++	if (ret) {
++		scoped_guard(spinlock_irqsave, &kbd->level_lock)
++			kbd->level = old;
++	}
 +
 +	return ret;
 +}
@@ -249,14 +267,15 @@ index 000000000000..4ceb9e59777f
 +	u8 level;
 +	int ret;
 +
-+	guard(mutex)(&kbd->lock);
++	guard(mutex)(&kbd->cmd_lock);
 +
 +	ret = spectrum_cmd(kbd, SPECTRUM_OP_GET_BRIGHTNESS, 0, true);
 +	if (ret < 0)
 +		return ret;
 +
 +	level = spectrum_hw_to_level(ret);
-+	WRITE_ONCE(kbd->level, level);
++	scoped_guard(spinlock_irqsave, &kbd->level_lock)
++		kbd->level = level;
 +
 +	return level;
 +}
@@ -275,18 +294,16 @@ index 000000000000..4ceb9e59777f
 +	if (ret)
 +		return ret;
 +
-+	kbd->cdev.name = "legion::" LED_FUNCTION_KBD_BACKLIGHT;
++	kbd->cdev.name = ":" LED_FUNCTION_KBD_BACKLIGHT;
 +	kbd->cdev.max_brightness = SPECTRUM_LED_MAX_BRIGHTNESS;
 +	kbd->cdev.brightness_get = spectrum_led_get;
 +	kbd->cdev.brightness_set_blocking = spectrum_led_set;
 +	kbd->cdev.flags = LED_BRIGHT_HW_CHANGED | LED_RETAIN_AT_SHUTDOWN;
 +
-+	/* Registration reads the initial level through brightness_get */
 +	ret = led_classdev_register(&hdev->dev, &kbd->cdev);
 +	if (ret)
 +		return ret;
 +
-+	/* Keep receiving input reports even if nobody opens the input devices */
 +	ret = hid_hw_open(hdev);
 +	if (ret) {
 +		led_classdev_unregister(&kbd->cdev);
@@ -320,9 +337,11 @@ index 000000000000..4ceb9e59777f
 +	if (!kbd->buf)
 +		return -ENOMEM;
 +
-+	ret = devm_mutex_init(&hdev->dev, &kbd->lock);
++	ret = devm_mutex_init(&hdev->dev, &kbd->cmd_lock);
 +	if (ret)
 +		return ret;
++
++	spin_lock_init(&kbd->level_lock);
 +
 +	kbd->hdev = hdev;
 +	hid_set_drvdata(hdev, kbd);
@@ -354,10 +373,6 @@ index 000000000000..4ceb9e59777f
 +	hid_hw_stop(hdev);
 +}
 +
-+/*
-+ * Runs in interrupt context for every input report. HID core does not call it
-+ * during probe or remove, so kbd->initialized cannot change underneath it.
-+ */
 +static int spectrum_raw_event(struct hid_device *hdev, struct hid_report *report,
 +			      u8 *data, int size)
 +{
@@ -366,18 +381,20 @@ index 000000000000..4ceb9e59777f
 +
 +	if (!kbd->initialized || report->id != SPECTRUM_STATE_REPORT_ID || size < 3)
 +		return 0;
-+	if (data[1] != SPECTRUM_STATE_BRIGHTNESS && data[1] != SPECTRUM_STATE_BRIGHTNESS_DOWN)
++	if (data[1] != SPECTRUM_STATE_BRIGHTNESS_UP && data[1] != SPECTRUM_STATE_BRIGHTNESS_DOWN)
 +		return 0;
 +
 +	/*
 +	 * The controller also reports the level after our own writes and after
-+	 * preset changes; only report changes not made through this driver.
++	 * RGB preset changes; only report actual changes, such as those from Fn+Up/Down.
 +	 */
 +	level = spectrum_hw_to_level(data[2]);
-+	if (level != READ_ONCE(kbd->level)) {
-+		WRITE_ONCE(kbd->level, level);
-+		led_classdev_notify_brightness_hw_changed(&kbd->cdev, level);
++	scoped_guard(spinlock_irqsave, &kbd->level_lock) {
++		if (level == kbd->level)
++			return 0;
++		kbd->level = level;
 +	}
++	led_classdev_notify_brightness_hw_changed(&kbd->cdev, level);
 +
 +	return 0;
 +}
@@ -389,7 +406,7 @@ index 000000000000..4ceb9e59777f
 +MODULE_DEVICE_TABLE(hid, spectrum_devices);
 +
 +static struct hid_driver spectrum_driver = {
-+	.name		= "hid-lenovo-legion-spectrum",
++	.name		= "hid-lenovo-spectrum",
 +	.id_table	= spectrum_devices,
 +	.probe		= spectrum_probe,
 +	.remove		= spectrum_remove,

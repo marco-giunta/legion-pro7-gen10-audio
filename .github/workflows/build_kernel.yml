@@ -127,7 +127,7 @@ jobs:
                 echo "Combined patch written to kernel/linux-kernel-test.patch"
             - name: Set kernel-local config parameters
               run: |
-                printf 'CONFIG_SND_HDA_SCODEC_AW88399_I2C=m\nCONFIG_HID_LENOVO_LEGION_SPECTRUM=m\n' >> kernel/kernel-local
+                printf 'CONFIG_SND_HDA_SCODEC_AW88399_I2C=m\nCONFIG_HID_LENOVO_SPECTRUM=m\n' >> kernel/kernel-local
                 echo "aw88399 kernel parameters added to kernel-local"
             - name: Set custom buildid in kernel.spec
               run: |

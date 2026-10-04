@@ -82,21 +82,21 @@ The Legion Pro 7 16AFR10H and similar Gen 10 Legions drive their RGB keyboard ba
 
 ***After:*** the keyboard brightness slider can be used to get and set the brightness level.
 
-This series adds a HID driver that exposes brightness as a `legion::kbd_backlight` LED class device (off + 3 levels), allowing desktops to control it via UPower. Firmware-initiated brightness changes (Fn+Up/Down) are reported via `brightness_hw_changed` so desktops can display an OSD.
+This series adds a HID driver that exposes brightness as a `:kbd_backlight` LED class device (off + 3 levels), allowing desktops to control it via UPower. Firmware-initiated brightness changes (Fn+Up/Down) are reported via `brightness_hw_changed` so desktops can display an OSD.
 
-The keyboard backlight will be exposed as `legion::kbd_backlight` under `/sys/class/leds/` and can be controlled via UPower or directly:
+The keyboard backlight will be exposed as `:kbd_backlight` under `/sys/class/leds/` and can be controlled via UPower or directly:
 
 ```sh
 # Read current brightness
-cat /sys/class/leds/legion::kbd_backlight/brightness
+cat /sys/class/leds/:kbd_backlight/brightness
 # Set brightness (0 = off, 1-3 = low/medium/high)
-echo 2 | sudo tee /sys/class/leds/legion::kbd_backlight/brightness
+echo 2 | sudo tee /sys/class/leds/:kbd_backlight/brightness
 # Alternatively, you can also use brightnessctl
-brightnessctl --device legion::kbd_backlight set 2
+brightnessctl --device :kbd_backlight set 2
 ```
 
 Fn+Up and Fn+Down change brightness in firmware as usual; the driver reads the new level back and reports it via brightness_hw_changed, so a desktop environment with UPower integration (e.g. KDE Plasma) will show a popup notification.
 
-**Note:** UPower 1.91.4 (check with `upower -v`) [has a bug](https://gitlab.freedesktop.org/upower/upower/-/work_items/358) where firmware-initiated brightness changes (Fn+Up/Down) are not picked up by the desktop: no popup notification appears and the brightness slider does not update, though setting brightness from the desktop still works. [This has already been fixed upstream](https://gitlab.freedesktop.org/upower/upower/-/merge_requests/347). Until a release with the fix ships in your distribution, you can verify the driver is working correctly by reading `/sys/class/leds/legion::kbd_backlight/brightness_hw_changed` directly, or temporarily work around the UPower bug by pressing Fn+Up/Down once after boot and then restarting UPower (`systemctl restart upower`).
+**Note:** UPower 1.91.4 (check with `upower -v`) [has a bug](https://gitlab.freedesktop.org/upower/upower/-/work_items/358) where firmware-initiated brightness changes (Fn+Up/Down) are not picked up by the desktop: no popup notification appears and the brightness slider does not update, though setting brightness from the desktop still works. [This has already been fixed upstream](https://gitlab.freedesktop.org/upower/upower/-/merge_requests/347). Until a release with the fix ships in your distribution, you can verify the driver is working correctly by reading `/sys/class/leds/:kbd_backlight/brightness_hw_changed` directly, or temporarily work around the UPower bug by pressing Fn+Up/Down once after boot and then restarting UPower (`systemctl restart upower`).
 
 Per-key RGB and lighting effects are not exposed by this driver and remain accessible via hidraw for userspace tools.
