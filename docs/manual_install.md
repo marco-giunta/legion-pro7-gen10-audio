@@ -12,6 +12,7 @@ You'll see a line like `Subsystem Id: 0x17aa<4 characters>`, representing your d
 |------------|------------|----------|------------|-----|-----|
 | 0x17aa3906 | 0x17aa3907 | 16IAX10H / IAX10 | Legion Pro 7i Gen 10 / Y9000P 2025 | Intel | 83F5 |
 | 0x17aa3927 | 0x17aa3928 | ADR10 | Legion R9000P 2025 | AMD | 83LV |
+| 0x17aa3934 | 0x17aa3935 | AFR10 | Legion R9000P | AMD | 83F6 |
 | 0x17aa3936 | 0x17aa3937 | ADR10H | Legion R9000P 2025 | AMD | 83RV |
 | 0x17aa3938 | 0x17aa3939 | 16AFR10H | Legion Pro 7 Gen 10 | AMD | 83RU |
 

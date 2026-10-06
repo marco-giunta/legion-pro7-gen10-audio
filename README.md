@@ -25,10 +25,10 @@ This repository provides kernel patches and pre-built RPM packages for the model
 - Lenovo Legion Y9000P 2025 (IAX10) - Intel
 - Lenovo Legion R9000P 2025 (ADR10) - AMD
 - Lenovo Legion R9000P 2025 (ADR10H) - AMD
+- Legion R9000P (AFR10) - AMD
 
 **Models potentially supported**
-- Legion R9000P (AFR10) - shares a BIOS update package with the supported Legion Pro 7 16AFR10H, and its Windows audio driver includes the `AWDZ8399.bin` firmware
-- Legion R9000P (AFR10H) - shares Windows audio driver with the above
+- Legion R9000P (AFR10H) - shares a BIOS update package with the supported Legion Pro 7 16AFR10H, and its Windows audio driver includes the `AWDZ8399.bin` firmware
 - Legion Y9000P (IAX10H) - shares a BIOS update package with the supported Legion Pro 7i 16IAX10H / Y9000P IAX10, and its Windows audio driver includes the awinic firmware
 - Legion Pro 7 Gen 9 (16ADR10H) - shares the same Windows audio driver package as the supported Legion Pro 7 16AFR10H, including an identical `AWDZ8399.bin` firmware file
 
@@ -293,6 +293,7 @@ This project would have never happened without the help of several amazing peopl
 - Munzir Taha ([@munzirtaha](https://github.com/munzirtaha)): reported the firmware reload bug and SOF/mic profile issues, tested the upstream patch series, and provided consistently detailed diagnostic reports (most eagle-eyed tester ever).
 - [@ZephyrSober](https://github.com/ZephyrSober), [@bash-shabash](https://github.com/bash-shabash), [@tduck1equack](https://github.com/tduck1equack): helped add R9000P ADR10 support by reporting the PCI SSID collision and testing the fix
 - [@287433](https://github.com/287433): helped add support for the R9000P ADR10H by reporting its IDs
+- [@LifeMoroz](https://github.com/LifeMoroz): helped add support for the R9000P AFR10 by reporting its IDs
 - Finally, I extend my thanks to everyone who contributed time, energy, logs, codec dumps, money to the bounty, or simply reported their experience (especially those who did so before I joined the project)
 
 If you helped me personally but I forgot to mention you by name, please know it's not for lack of gratitude; this project had many hands, and every contribution mattered. I may simply be misremembering something from the past ~8 months.
