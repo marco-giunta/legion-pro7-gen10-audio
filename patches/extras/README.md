@@ -67,7 +67,7 @@ Your DE may be able to take advantage of this information e.g. to display a popu
 
 The main benefit to this patch is that, if you're using the `<I248>` trick above to workaround keys that are currently emitting `KEY_UNKNOWN`, the privacy switch won't cause spurious activation of the same custom keybind.
 
-## Lenovo Legion Spectrum keyboard backlight driver (`hid-lenovo-legion-spectrum`)
+## Lenovo Legion Spectrum keyboard backlight driver (`hid-lenovo-spectrum`)
 **Status:** WIP, soon to be submitted upstream for review (HID and platform/x86 subsystems)
 
 [***All credit for reverse engineering the USB HID protocol goes to the LenovoLegionToolkit project***](https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/tree/master) (no actual code from that project was used here, just the knowledge about the protocol).
@@ -98,5 +98,7 @@ brightnessctl --device :kbd_backlight set 2
 Fn+Up and Fn+Down change brightness in firmware as usual; the driver reads the new level back and reports it via brightness_hw_changed, so a desktop environment with UPower integration (e.g. KDE Plasma) will show a popup notification.
 
 **Note:** UPower 1.91.4 (check with `upower -v`) [has a bug](https://gitlab.freedesktop.org/upower/upower/-/work_items/358) where firmware-initiated brightness changes (Fn+Up/Down) are not picked up by the desktop: no popup notification appears and the brightness slider does not update, though setting brightness from the desktop still works. [This has already been fixed upstream](https://gitlab.freedesktop.org/upower/upower/-/merge_requests/347). Until a release with the fix ships in your distribution, you can verify the driver is working correctly by reading `/sys/class/leds/:kbd_backlight/brightness_hw_changed` directly, or temporarily work around the UPower bug by pressing Fn+Up/Down once after boot and then restarting UPower (`systemctl restart upower`).
+
+**Note:** Fedora is now on v1.91.5, which fixes this bug.
 
 Per-key RGB and lighting effects are not exposed by this driver and remain accessible via hidraw for userspace tools.
