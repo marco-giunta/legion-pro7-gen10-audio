@@ -235,6 +235,11 @@ In short: the build process is transparent and auditable, the downloads are chec
 > The final mt7927 WiFi+BT driver is included in all 7.2+ kernels. As such, the logic to separately add the mediatek patch from the `patches/mt7927/` folder has now been removed from the build script. If you want to audit the version of the GitHub actions script that was used to make previous releases, please use the commit history.
 > Note that for releases 7.2.4-7.2.6 here, I temporarily used an empty mediatek file (v2.15) as a placeholder before I properly edited the build script, so the above only applies starting with release 7.2.7 from this repo.
 
+### Why does a guide about fixing audio also cover NVIDIA drivers and Secure Boot?
+The patched kernel replaces your distribution's stock kernel, which means anything that was tied to it (NVIDIA drivers built against it, Secure Boot signatures covering it) needs to be updated alongside it. These steps aren't unrelated; they're the predictable consequences of swapping the kernel. The guide covers them using Fedora's standard tooling to give everyone a known-good baseline.
+If you already have a working setup that differs, you're welcome to adapt the relevant steps accordingly.
+Conversely, if unsure, it's recommended to follow the instructions in this repo, as everything here has been carefully validated on a stock Fedora install (Fedora derivatives/immutable spins are mostly untested, see FAQ entries below).
+
 ### Black screen issues
 If you see a black screen with a cursor or bar in the top left corner after selecting the patched kernel in the GRUB boot menu, the most likely cause is Secure Boot preventing the patched kernel from loading, as it is unsigned (unlike the stock Fedora kernel).
 A black screen can also indicate a GPU driver initialization failure. 

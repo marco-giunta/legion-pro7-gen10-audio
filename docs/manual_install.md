@@ -1,5 +1,16 @@
 # Manual installation guide
 
+## Before you begin
+> [!NOTE]
+> This guide (as well as the main README) follows Fedora's standard tooling throughout: RPM Fusion for NVIDIA drivers, MOK enrollment for Secure Boot signing, and so on. If you already have a working setup that differs (different driver source, a Fedora derivative with its own packaging, etc.), you know what you're doing and can adapt the relevant steps accordingly. The goal is to give everyone a known-good baseline, not to second-guess your existing configuration.
+>
+> Therefore, if you know what you're doing, feel free to adapt the steps here; conversely, if unsure, it's recommended to follow these instructions as-is.
+
+> [!TIP]
+> The steps below only show how to install the pre-compiled patched kernel as downloaded from the releases page of this repo; if you prefer to compile it yourself (e.g. to further customize it with different/additional patches), please check out my [self-compile guide](./self_compile.md) (also based on official Fedora documentation).
+
+## Installation steps
+
 0. **Verify your device is supported**
 
 Check your SSID:
@@ -119,7 +130,7 @@ sudo akmods --force
 ```
 and wait for it to confirm that the NVIDIA driver for the patched kernel has been built successfully.
 
-4. **Post install**
+4. **Post install diagnostics**
 - After rebooting, verify the installation:
 ```bash
 # Check kernel version
@@ -160,3 +171,6 @@ This is what a successfully running AW88399 driver looks like (apart from the SS
 ```
 
 Note that, just like in the above example taken from my 16AFR10H, the same device can have different, consecutive IDs for the codec and the ACPI AWDZ8399 entry. This is normal and not cause for concern (in fact, it's precisely why each supported model has two consecutive IDs associated to it in the driver).
+
+5. **Optional post install configuration**
+After a successful install, it's highly recommended to go through the [optional post install configuration guide](/README.md#optional-post-installation-steps) to set the new kernel as the persistent default (so that updating the stock Fedora kernel won't become the default boot option in the GRUB menu) and to sign it via `mokutil` (so that it becomes possible to re-enable Secure Boot).
