@@ -20,27 +20,30 @@ Notice that each supported model can have one of two codec IDs; it doesn't matte
 
 Also, the only thing that matters is the codec ID; if your Legion has a different commercial name but the same codec ID as one of these, the patch will treat the two identically. The names are mostly included for reference.
 
-If you want, you can check your Model ID/name and DMI using
-```sh
-cat /sys/class/dmi/id/product_family
-cat /sys/class/dmi/id/product_name
-```
+> [!TIP]
+> If you want, you can check your Model ID/name and DMI using
+> ```sh
+> cat /sys/class/dmi/id/product_family
+> cat /sys/class/dmi/id/product_name
+> ```
+> but the important thing to check in terms of compatibility is the codec ID.
 
-If your ID matches one of these, proceed to step 1.
+If your codec ID matches one of the supported ones, proceed to step 1.
 
-If your ID is not listed, but your laptop is one of the supported models, it may simply be an undiscovered hardware revision.
+If your ID is not listed, but your laptop is one of the supported models, it may simply be an undiscovered hardware revision, in which case it's possible I may be able to add support for it.
 
-Before opening an issue, verify that your laptop satisfies the requirements described in the ["Will this patch work on other laptops?"](./will_this_patch_work_on_other_laptops.md) guide. In short, you must ensure that:
-
-- it has two dedicated woofers and a Smart Amplifier (as stated on the PSREF website);
-- its ACPI tables contain the `AWDZ8399` entry;
-- its Windows Realtek audio driver contains the `AWDZ8399.bin` firmware binary file.
-
-More details in the linked guide.
-
-If all checks pass, please open an issue following the instructions from the ["support new laptops" guide](./support_new_laptops.md).
-
-Similarly, if you don't get a matching codec SSID *and* your laptop is a model other than one of the supported ones, perform the same basic diagnostics before opening an issue with the same "support new laptops" guide. If you own a Legion 5i/7i 16IAX10, a Legion Pro 5i 16IAX10H, or a Legion Pro 5 16AFR10/16ADR10, you don't need a patched kernel at all; see the [audio guide for other Legion models](./other_legions_guide.md).
+> [!IMPORTANT]
+> Before opening an issue asking me to add support for a new model, verify that your laptop satisfies the requirements described in the ["Will this patch work on other laptops?"](./will_this_patch_work_on_other_laptops.md) guide. In short, you must ensure that:
+>
+> - it has two dedicated woofers and a Smart Amplifier (as stated on the PSREF website);
+> - its ACPI tables contain the `AWDZ8399` entry;
+> - its Windows Realtek audio driver contains the `AWDZ8399.bin` firmware binary file.
+>
+> More details in the linked guide.
+>
+> If all checks pass, please open an issue following the instructions from the ["support new laptops" guide](./support_new_laptops.md).
+>
+> Similarly, if you don't get a matching codec SSID *and* your laptop is a model other than one of the supported ones, perform the same basic diagnostics before opening an issue with the same "support new laptops" guide. If you own a Legion 5i/7i 16IAX10, a Legion Pro 5i 16IAX10H, or a Legion Pro 5 16AFR10/16ADR10, you don't need a patched kernel at all; see the [audio guide for other Legion models](./other_legions_guide.md).
 
 1. **Install the firmware**
 - Download the [`aw88399_acf.bin` file](../firmware/aw88399/aw88399_acf.bin); alternatively, you can extract the binary yourself from the Windows driver by following the instructions in [this section of the main README](../README.md#step-3-verify-the-windows-audio-driver-contains-the-aw88399-firmware-binary).
