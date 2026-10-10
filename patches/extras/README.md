@@ -35,7 +35,7 @@ After logging out and back in, the Smart Connect key will appear as F20 in KDE's
 > 	<I455> = 455;		// #define KEY_LINK_PHONE          447
 >```
 > In general, it will be the corresponding scancode +8 for historical X11-related reasons.
-> The actual kernel-level codes [are defined here](https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h)
+> The actual kernel-level codes [are defined here](https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h).
 
 > [!NOTE]
 > You can use the same method to remap the Smart Connect key even without this patch installed, by using the `<I248>` code to remap the `KEY_UNKNOWN` event itself:
@@ -59,7 +59,7 @@ After logging out and back in, the Smart Connect key will appear as F20 in KDE's
 
 
 ## Camera switch reporting
-**Status:** [accepted upstream in `platform-drivers-x86`](https://git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/commit/?id=1584717fb8c7c80f06d116d3631334f6acde78ae)
+**Status:** [accepted upstream in `platform-drivers-x86`](https://git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/commit/?id=81b60f8a71398e91237b59866a0b550e33dad309)
 
 On the Legion Pro 7 16AFR10H and similar 2025 Lenovo laptops, a physical switch on the side disables the camera at the firmware level. Without this patch the corresponding WMI events are reported as `KEY_UNKNOWN`; the patch reports them as `SW_CAMERA_LENS_COVER`, consistent with how `lenovo-wmi-camera` handles the equivalent switch on other Lenovo laptops.
 
