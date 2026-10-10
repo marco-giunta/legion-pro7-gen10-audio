@@ -208,9 +208,9 @@ There exist multiple ways to compile the Linux kernel under Fedora (with some gu
 No. The original kernel remains installed unless you manually remove it, *which you never should*; it's recommended to always keep a backup. You can select which kernel to boot from the GRUB menu (quickly press ESC repeatedly during boot).
 
 ### How do I update to a newer kernel version?
-Simply re-run the install script; it will automatically download and install the latest kernel built by GitHub Actions, while skipping the pre- and post- install steps that have been already completed.
+Simply re-run the install script; it will automatically download and install the latest kernel built by GitHub Actions, while skipping the pre-install steps that have been already completed.
 
-Alternatively, download and extract the updated tarball, then run the same `dnf install --nogpgcheck` command detailed in the ["manual installation"](docs/manual_install.md) guide; anything else (like installing the firmware, installing the NVIDIA package, and setting the correct audio profile) has to be done only once, no need to repeat those steps.
+Alternatively, download and extract the updated tarball, then run the same `dnf install --nogpgcheck` command detailed in the ["manual installation"](docs/manual_install.md) guide; anything else (like installing the firmware, installing the NVIDIA driver akmod package, etc.) has to be done only once, no need to repeat those steps.
 
 ### How do I remove an older version of the patched kernel?
 The recommended way to uninstall old kernel builds is to do nothing at all: by default, Fedora keeps around three kernels as fallback, so when you install a new one, the oldest will be removed.
