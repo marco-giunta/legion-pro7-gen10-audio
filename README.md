@@ -205,7 +205,7 @@ The new config parameter introduced by this patch which you must add to your con
 ```
 CONFIG_SND_HDA_SCODEC_AW88399_I2C=m
 ```
-This applies to both Intel and AMD models. For everything else, it's recommended you use your existing distro kernel config as a base by copying `/boot/config-$(uname -r)` and appending the two lines above, as described in Nadim's main guide (the one that relies on the kernel's `make` utilities directly). If your distro offers higher-level build tooling (similar to Fedora's `fedpkg`), you may be able to pass new kconfig parameters directly rather than editing the config file manually; check your distro's documentation. For more details on the differences between these build methods, see Nadim's repo.
+This applies to both Intel and AMD models. For everything else, it's recommended you use your existing distro kernel config as a base by copying `/boot/config-$(uname -r)` and appending the line above, as described in Nadim's main guide (the one that relies on the kernel's `make` utilities directly). If your distro offers higher-level build tooling (similar to Fedora's `fedpkg`), you may be able to pass new kconfig parameters directly rather than editing the config file manually; check your distro's documentation. For more details on the differences between these build methods, see Nadim's repo.
 
 > [!TIP]
 > If on top of the AW88399 HDA driver you're adding anything from [/patches/extras/](/patches/extras/) (e.g. the keyboard backlight driver patch), also add the kconfigs from [this file](/patches/extras/extras-kconfig.txt).
