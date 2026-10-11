@@ -19,7 +19,7 @@ Other Legion models have simpler issues such as needing a mic boost calibration 
 
 This repository provides kernel patches and pre-built RPM packages for the models that need a custom kernel, and documentation for those that don't.
 
-**Supported Models** *(AW88399 smart amp HDA side codec driver)*
+### Supported Models
 
 | OEM    | Model                         | CPU OEM | DMI  | Upstream support introduced in |
 |--------|-------------------------------|---------|------|--------------------------------|
@@ -30,7 +30,7 @@ This repository provides kernel patches and pre-built RPM packages for the model
 | Lenovo | Legion R9000P ADR10H          | AMD     | 83RV | 7.3-rc1                        |
 | Lenovo | Legion R9000P AFR10           | AMD     | 83F6 | [7.4-rc1?](https://lore.kernel.org/linux-sound/SN6PR19MB2303D726352EEE508A70D6D4FC922@SN6PR19MB2303.namprd19.prod.outlook.com/) |
 
-**Models potentially supported**
+### Models potentially supported
 
 | Model                       | Rationale |
 |-----------------------------|-----------|
@@ -48,7 +48,7 @@ cat /sys/class/dmi/id/product_family
 cat /sys/class/dmi/id/product_name
 ```
 
-**Other models with separate, simpler fixes**
+### Other models with separate, simpler fixes
 
 These models do *not* need a patched kernel, only some software tweaks; see the ["Other Legions" guide](docs/other_legions_guide.md).
 
@@ -66,7 +66,7 @@ These models do *not* need a patched kernel, only some software tweaks; see the 
 Other Legion models may also benefit from this patch despite being currently unsupported.
 To determine whether your laptop is a candidate for this driver, see **Step 0** of the [manual installation guide](docs/manual_install.md) or the [**"Will this patch work on other laptops?"**](#will-this-patch-work-on-other-laptops) guide. In short, the laptop must have dedicated woofers driven by an AW88399 Smart Amplifier. The linked guide explains how to verify this using the speaker specifications, ACPI tables, and the official Lenovo Windows audio driver for your machine.
 
-**Credits & Attributions**
+### Credits & Attributions
 
 - *Audio patch*: This work builds upon the [original Intel audio fix](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga) by **Lyapsus**, **Nadim Kobeissi**, and contributors. Their incredible work made this project possible.
 
@@ -75,6 +75,8 @@ To determine whether your laptop is a candidate for this driver, see **Step 0** 
 - *Smart Connect key fix, Camera Privacy switch fix, and keyboard backlight driver*: [these patches are all by me](patches/extras/). Credit for reverse engineering the USB HID protocol goes to the [LenovoLegionToolkit project](https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit/tree/master).
 
 More detailed credits are available [here](#credits).
+
+### Repo features & disclaimers
 
 **What's new in this fork:**
 - **Automated Fedora RPM builds** via GitHub Actions
