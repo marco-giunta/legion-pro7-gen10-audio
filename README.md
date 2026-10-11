@@ -19,20 +19,26 @@ Other Legion models have simpler issues such as needing a mic boost calibration 
 
 This repository provides kernel patches and pre-built RPM packages for the models that need a custom kernel, and documentation for those that don't.
 
-**Supported Models** *(AW88399 smart amp fix)*
-- Lenovo Legion Pro 7i Gen 10 (16IAX10H) - Intel
-- Lenovo Legion Pro 7 Gen 10 (16AFR10H) - AMD
-- Lenovo Legion Y9000P 2025 (IAX10) - Intel
-- Lenovo Legion R9000P 2025 (ADR10) - AMD
-- Lenovo Legion R9000P 2025 (ADR10H) - AMD
-- Legion R9000P (AFR10) - AMD
+**Supported Models** *(AW88399 smart amp HDA side codec driver)*
+
+| OEM    | Model                         | CPU OEM | DMI  | Upstream support introduced in |
+|--------|-------------------------------|---------|------|--------------------------------|
+| Lenovo | Legion Pro 7i Gen 10 16IAX10H | Intel   | 83F5 | 7.3-rc1                        |
+| Lenovo | Legion Pro 7 Gen 10 16AFR10H  | AMD     | 83RU | 7.3-rc1                        |
+| Lenovo | Legion Y9000P IAX10           | Intel   | 83F5 | 7.3-rc1                        |
+| Lenovo | Legion R9000P ADR10           | AMD     | 83LV | 7.3-rc1                        |
+| Lenovo | Legion R9000P ADR10H          | AMD     | 83RV | 7.3-rc1                        |
+| Lenovo | Legion R9000P AFR10           | AMD     | 83F6 | [7.4-rc1?](https://lore.kernel.org/linux-sound/SN6PR19MB2303D726352EEE508A70D6D4FC922@SN6PR19MB2303.namprd19.prod.outlook.com/) |
 
 **Models potentially supported**
-- Legion R9000P (AFR10H) - shares a BIOS update package with the supported Legion Pro 7 16AFR10H, and its Windows audio driver includes the `AWDZ8399.bin` firmware
-- Legion Y9000P (IAX10H) - shares a BIOS update package with the supported Legion Pro 7i 16IAX10H / Y9000P IAX10, and its Windows audio driver includes the awinic firmware
-- Legion Pro 7 Gen 9 (16ADR10H) - shares the same Windows audio driver package as the supported Legion Pro 7 16AFR10H, including an identical `AWDZ8399.bin` firmware file
 
-If you own one of these models and your woofers are broken on Linux, you are likely a candidate for this patch. Please verify that your laptop passes the checks described [in this section](#will-this-patch-work-on-other-laptops), then open an issue using the ["support new laptops" guide](/docs/support_new_laptops.md).
+| Model                       | Rationale |
+|-----------------------------|-----------|
+| Lenovo Legion R9000P AFR10H | shares audio driver with the AFR10, which in turn shares a BIOS update package with the supported Legion Pro 7 16AFR10H; its Windows audio driver includes the `AWDZ8399.bin` firmware |
+| Lenovo Legion Y9000P IAX10H | shares a BIOS update package with the supported Legion Pro 7i 16IAX10H / Y9000P IAX10, and its Windows audio driver includes the awinic firmware |
+| Lenovo Legion Pro 7 Gen 9 16ADR10H | shares the same Windows audio driver package as the supported Legion Pro 7 16AFR10H, including an identical `AWDZ8399.bin` firmware file |
+
+If you own one of these models and your woofers are broken on Linux, you are likely a candidate for this driver. Please verify that your laptop passes the checks described [in this section](#will-this-patch-work-on-other-laptops), then open an issue using the ["support new laptops" guide](/docs/support_new_laptops.md) (see [#9](https://github.com/marco-giunta/legion-pro7-gen10-audio/issues/9) for an example).
 
 It's possible that some of these laptops share codec/ACPI SSIDs with the already supported Legions, in which case the current patch would already work out of the box. Knowing about this would be useful to make the documentation more accurate.
 In this case, *while running the patched kernel from this repo or kernel 7.3-rc1+ and the firmware correctly installed*, please open an issue stating that audio works and the output of these commands:
@@ -45,10 +51,13 @@ cat /sys/class/dmi/id/product_name
 **Other models with separate, simpler fixes**
 
 These models do *not* need a patched kernel, only some software tweaks; see the ["Other Legions" guide](docs/other_legions_guide.md).
-- Legion Pro 5i Gen 10 (16IAX10H) - Intel
-- Legion Pro 5 Gen 10 (16AFR10) - AMD
-- Legion Pro 5 Gen 9 (16ADR10) - AMD
-- Legion 5i/7i Gen 10 (16IAX10) - Intel
+
+| OEM    | Model                         | CPU OEM |
+|--------|-------------------------------|---------|
+| Lenovo | Legion Pro 5i Gen 10 16IAX10H | Intel   |
+| Lenovo | Legion Pro 5 Gen 10 16AFR10   | AMD     |
+| Lenovo | Legion Pro 5 Gen 9 16ADR10    | AMD     |
+| Lenovo | Legion 5i/7i Gen 10 16IAX10   | Intel   |
 
 > *Note on the 7i 16IAX10*: Almost all the models above have no smart amplifier hardware at all (verifiable on [Lenovo's PSREF](https://psref.lenovo.com)), so the patch doesn't apply because there is no dedicated hardware to drive at the kernel level. Furthermore, all these laptops only have 2 speakers, unlike the 4 separate tweeters/woofers pair as the supported Pro 7 models.
 >
