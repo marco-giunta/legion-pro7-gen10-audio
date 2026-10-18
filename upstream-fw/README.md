@@ -74,6 +74,14 @@ If you've tested this and want to share results, provide feedback on the code, o
 
 ## Changelog
 
+### v1
+- Moved the "missing ACPI SSID" error to `aw88399_hda_acpi_probe()`.
+- Added missing explicit `#include <linux/string_helpers.h>` to cover `string_lower`, which was previously picked up implicitly.
+- Added missing links in the cover letter.
+- Slightly reworded parts of the cover letter and commit messages.
+- Rebased on `linux-next`, base commit `2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64`.
+- Submitted for review here: [lore link](https://lore.kernel.org/linux-sound/SN6PR19MB230399720ECFE990FF92A7BFFC992@SN6PR19MB2303.namprd19.prod.outlook.com/T/#t), [patchwork link](https://patchwork.kernel.org/series/1188398/).
+
 ### v0.3
 - Updated cover letter with references to the awinic firmware submission.
 - Rebased combined patch on the latest driver version.

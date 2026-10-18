@@ -1,0 +1,55 @@
+From 13db99a952af00d1e2cdb64f9c009fe40e833587 Mon Sep 17 00:00:00 2001
+From: Marco Giunta <marco_giunta@outlook.it>
+Date: Sun, 18 Oct 2026 18:50:07 +0200
+Subject: [PATCH 0/2] ALSA: hda: aw88399: Add per-model firmware loading
+
+The AW88399 HDA side codec driver currently requests firmware using
+the same hardcoded generic filename ("aw88399_acf.bin") as the ASoC driver
+it was derived from.
+This requires users to manually extract the firmware from the
+Windows driver, rename it with this model-independent name, and place
+it in /lib/firmware, which is not sustainable for distribution packaging.
+
+This series adds support for per-model firmware filenames based on the
+ACPI subsystem ID (e.g. "awinic/aw88399_acf_17aa3938.bin"), making the
+driver compatible with the linux-firmware repository's per-device naming
+convention.
+ACF firmware binaries for the currently supported Lenovo Legion models
+have been submitted to the linux-firmware ML by AWINIC [1] (currently
+pending review).
+
+The series is as follows:
+
+* Patch 1 adds a name parameter to the shared firmware request function
+  so callers can specify the filename.
+
+* Patch 2 uses the ACPI subsystem ID to construct model-specific firmware
+  names in the HDA driver.
+
+Note: since there are still some AW88399 patches either pending merge or
+that have yet to cross the ASoC/HDA bridge (see the note in [2]), I based
+this series on linux-next, meaning a rebase may be needed before merging.
+Apologies for the extra noise; I'm sending the series now for review
+as I'd rather not miss the 7.4 merge window.
+
+Best regards,
+Marco
+
+[1] https://lore.kernel.org/linux-firmware/4b70e056-89d9-4d92-8ecb-ecb4c7d48c8a@app.fastmail.com/
+[2] https://lore.kernel.org/linux-sound/SN6PR19MB2303D726352EEE508A70D6D4FC922@SN6PR19MB2303.namprd19.prod.outlook.com/T/#u
+
+Marco Giunta (2):
+  ASoC: aw88399: pass firmware name as argument
+  ALSA: hda: aw88399: use SSID-specific firmware name
+
+ include/sound/aw88399.h                    |  2 +-
+ sound/hda/codecs/side-codecs/aw88399_hda.c | 18 ++++++++++++++----
+ sound/soc/codecs/aw88399-lib.c             | 10 +++++-----
+ sound/soc/codecs/aw88399.c                 |  2 +-
+ 4 files changed, 21 insertions(+), 11 deletions(-)
+
+
+base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
+-- 
+2.56.0
+
