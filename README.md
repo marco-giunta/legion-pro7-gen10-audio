@@ -28,7 +28,7 @@ This repository provides kernel patches and pre-built RPM packages for the model
 | Lenovo | Legion Y9000P IAX10           | Intel   | 83F5 | 7.3-rc1                        |
 | Lenovo | Legion R9000P ADR10           | AMD     | 83LV | 7.3-rc1                        |
 | Lenovo | Legion R9000P ADR10H          | AMD     | 83RV | 7.3-rc1                        |
-| Lenovo | Legion R9000P AFR10           | AMD     | 83F6 | [7.4-rc1?](https://lore.kernel.org/linux-sound/SN6PR19MB2303D726352EEE508A70D6D4FC922@SN6PR19MB2303.namprd19.prod.outlook.com/) |
+| Lenovo | Legion R9000P AFR10           | AMD     | 83F6 | 7.4-rc1                        |
 
 ### Models potentially supported
 
