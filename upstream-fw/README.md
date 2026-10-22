@@ -2,7 +2,11 @@
 
 ## Status
 
+### Firmware patch
 [AWINIC has submitted the required firmware on behalf of Lenovo to the linux-firmware repo; the MR is currently pending for review.](https://lore.kernel.org/linux-firmware/4b70e056-89d9-4d92-8ecb-ecb4c7d48c8a@app.fastmail.com/T/#t)
+
+### Driver patch
+The v1 series has been merged and will ship starting with kernel 7.4-rc1 (see [here](https://git.kernel.org/pub/scm/linux/kernel/git/tiwai/sound.git/commit/?id=fc49516fbffd0cbbf2afded6743f81342f2a0cfd) and [here](https://git.kernel.org/pub/scm/linux/kernel/git/tiwai/sound.git/commit/?id=3e3a0bdf6a645cd6e5461d22ab6607303975606a)).
 
 ## Folder structure
 
