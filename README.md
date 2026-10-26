@@ -7,11 +7,11 @@
 > [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model (pre-7.2 releases), as well as [non-audio related, Legion-specific fixes](patches/extras) to fix some broken keyboard functionality and add keyboard backlight support.
 
 > [!NOTE]
-> **The AW88399 HDA side codec driver has been [merged into the Linux kernel](https://github.com/torvalds/linux/commit/e5c91aac491def6ab3f90c4cc246e3fcb0f8f058) and [is now shipping starting with 7.3-rc1](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/diff/sound/hda/codecs/side-codecs/aw88399_hda.c?id=v7.3-rc1&id2=v7.2).** Once the final 7.3 kernel is released, users will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/) for historical info about the upstream submission.
+> **The AW88399 HDA side codec driver has been [merged into the Linux kernel](https://github.com/torvalds/linux/commit/e5c91aac491def6ab3f90c4cc246e3fcb0f8f058) and [is now shipping starting with 7.3-rc1](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/diff/sound/hda/codecs/side-codecs/aw88399_hda.c?id=v7.3-rc1&id2=v7.2).** Once the 7.3 kernel reaches your distribution, you will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/) for historical info about the upstream submission.
 
 > [!IMPORTANT]
 > **Firmware note:** The firmware file (`aw88399_acf.bin`) is not yet in the `linux-firmware` repository. *Even on kernel 7.3-rc1+, users currently need to install it manually.*
-> The required firmware for all currently supported models has been submitted by AWINIC and Lenovo to the linux-firmware repo; conversely, work is ongoing on the driver side to reach complete OOTB functionality. See [here](/upstream-fw/) for more info.
+> The required firmware for all currently supported models has been submitted by AWINIC and Lenovo to the linux-firmware repo; see [here](/upstream-fw/) for more info.
 
 Recent Lenovo Legion laptops drive their woofers using the AW88399 Smart Amp via I2C bus as side codecs to a Realtek ALC287 HDA codec, in a setup that requires a driver which currently doesn't exist in the mainline Linux kernel. Due to this, on the current stock Linux kernel, the woofers don't work, and as a result the speakers lack bass and overall sound quiet and tinny.
 
@@ -86,7 +86,7 @@ More detailed credits are available [here](#credits).
 - **easyeffects profiles** to restore some Windows-like features
 - **[extra patches](patches/extras/)** to allow for correct remapping of the Smart Connect (F11) key, properly register the camera privacy switch's presence in userspace, as well as a new driver to allow for the keyboard backlight brightness to be controlled from the OS (i.e. without the Fn+Up/Down combos)
 
-The actual AW88399 patch development is now shared between this fork and the original repo, as I now maintain both.
+The actual AW88399 driver development is now shared between this fork and the original repo, as I now maintain both.
 
 ***AI usage disclaimer:*** 
 
