@@ -6,7 +6,7 @@ All patches here were written by me and submitted to the appropriate upstream ke
 
 
 ## Smart Connect hotkey (F11) mapping
-**Status:** [accepted upstream in `platform-drivers-x86`](https://git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/commit/drivers/platform/x86/lenovo/ideapad-laptop.c?id=ccc8c8481c1fce1ec092a91883f3a7604f70fc06)
+**Status:** [accepted upstream in `platform-drivers-x86`](https://git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/commit/drivers/platform/x86/lenovo/ideapad-laptop.c?id=ccc8c8481c1fce1ec092a91883f3a7604f70fc06), [officially upstream since 7.4-rc1](https://github.com/torvalds/linux/commit/ccc8c8481c1fce1ec092a91883f3a7604f70fc06)
 
 On the Legion Pro 7 16AFR10H and similar 2025 Lenovo laptops, the F11 key (marked with a laptop/tablet/phone icon) triggers the Lenovo Smart Connect app under Windows. Without this patch, the key is reported as `KEY_UNKNOWN` under Linux; the patch maps it to `KEY_LINK_PHONE`, consistent with how the `thinkpad_acpi` driver handles the equivalent Microsoft Phone Link and Intel Unison keys.
 
@@ -59,7 +59,7 @@ After logging out and back in, the Smart Connect key will appear as F20 in KDE's
 
 
 ## Camera switch reporting
-**Status:** [accepted upstream in `platform-drivers-x86`](https://git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/commit/drivers/platform/x86/lenovo/ideapad-laptop.c?id=97fa641b21c0bf05e2c714c971a19f9d24b42d6f)
+**Status:** [accepted upstream in `platform-drivers-x86`](https://git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/commit/drivers/platform/x86/lenovo/ideapad-laptop.c?id=97fa641b21c0bf05e2c714c971a19f9d24b42d6f), [officially upstream since 7.4-rc1](https://github.com/torvalds/linux/commit/97fa641b21c0bf05e2c714c971a19f9d24b42d6f)
 
 On the Legion Pro 7 16AFR10H and similar 2025 Lenovo laptops, a physical switch on the side disables the camera at the firmware level. Without this patch the corresponding WMI events are reported as `KEY_UNKNOWN`; the patch reports them as `SW_CAMERA_LENS_COVER`, consistent with how `lenovo-wmi-camera` handles the equivalent switch on other Lenovo laptops.
 
