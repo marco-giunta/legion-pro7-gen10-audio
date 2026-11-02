@@ -6,6 +6,65 @@
 >
 > [mt7927 community patch](https://github.com/jetm/mediatek-mt7927-dkms) also included to enable Wi-Fi and Bluetooth on the AMD model (pre-7.2 releases), as well as [non-audio related, Legion-specific fixes](patches/extras) to fix some broken keyboard functionality and add keyboard backlight support.
 
+## Project status (7.3+)
+
+### Driver status
+
+The AW88399 HDA side codec driver is now included in any 7.3+ kernel that has enabled `CONFIG_SND_HDA_SCODEC_AW88399_I2C=m`; the main audio work is done. There are some improvements and cleanups coming with 7.4 and others I will submit for 7.5+, but most of these won't make any difference in day-to-day operation; in that regards, the code is complete. The main difference is AFR10 support coming in 7.4 (see below); for everyone else, you no longer need to compile a custom kernel on Fedora or any other distro with an up-to-date kernel.
+
+### Firmware status
+
+> [!IMPORTANT]
+> **TL;DR:** The firmware binaries are not yet in the `linux-firmware` repository: for now, ***even on kernels 7.3+, users need to [install firmware manually](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga#step-1-install-the-aw88399-firmware).***
+
+> [!NOTE]
+> The required binaries have been submitted by Awinic on behalf of Lenovo to the linux-firmware mailing lists; however, the process is currently stuck (likely the email got lost due to a non-standard format, or the process of legal review of a new license is taking quite some time). On top of that, a new submission will be needed to include out-of-the-box support for the AFR10, but recently my contacts at Awinic have been unresponsive; therefore, even if distros start shipping the v1 firmware submission, AFR10 owners will at the very least need to copy/symlink the missing firmware (all supported Legions share the same file, it's just the file name that has to be changed based on the model).
+> I plan to make some noise on the firmware mailing lists ASAP to hopefully tackle whatever's blocking submission progression.
+
+> [!IMPORTANT]
+> Kernels 7.4 include breaking changes regarding how firmware is loaded. Even if you manually installed the firmware under 7.3, in order for audio to keep working under 7.4, you *must* follow [these instructions](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga#step-1-install-the-aw88399-firmware), which have to be performed once (and realistically speaking, there will never be further such changes).
+
+### The future of the AW88399 HDA side-codec driver and of this repo
+
+I will continue maintaining the upstream AW88399 HDA driver for the foreseeable future, providing code improvements, bugfixes, and most importantly support for any new device that may need it. I may also branch out to other Awinic platform, given the experience I've collected with them over time.
+
+As such, I will leave this repo open in case users want to report new devices, bugs, or more generally have a targeted way of contacting me (though I also plan to be reachable via traditional channels like bugzilla or via email). In particular, I will keep updating as needed the documentation regarding e.g. supporting new devices, to ensure it accurately follows the current upstream driver state. Some things, like the main README, will remain mostly unchanged (either for historical reference, or because they describe timeless pieces of information, like the supported models list, the context behind the AW88399 HDA driver, how to use the easyeffects profiles, etc.).
+
+Overall, updates on this repo will inevitably slow down, as the main audio work is done. In particular, I will no longer publish precompiled kernels after the 7.2.15 EOL, as Fedora is about to start shipping the official 7.3+ kernel release (which includes the AW88399 HDA driver enabled, see [here](https://bugzilla.redhat.com/show_bug.cgi?id=2537033), [here](https://gitlab.com/cki-project/kernel-ark/-/merge_requests/4756), and [here](https://gitlab.com/cki-project/kernel-ark/-/commit/3bc75d23b588ab82e472ec21b2d0a499d85cce28)).
+With ~1000 total downloads by ~30 dedicated users (most of whom relied on the automated script), I'm more than happy with how this repo's Actions pipeline has served its purpose ([see here for some stats](https://tooomm.github.io/github-release-stats/?username=marco-giunta&repository=legion-pro7-gen10-audio)).
+
+### 7.3+ FAQ
+
+#### I installed my distro's stock kernel 7.3+ package but audio is still broken.
+
+Before opening an issue, please try following the steps from the [basic troubleshooting guide](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga#audio-still-broken-even-on-kernel-73).
+
+#### I own the AFR10 and still need a custom kernel to fix audio, what should I do?
+
+These are your options:
+
+- Download the AFR10 IDs backport patch you can find in the `fix/patches/` folder in [Nadim's repo](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga), use it to patch 7.3.x kernels, and compile custom kernels until stable 7.4 starts shipping;
+- Compile vanilla (i.e. unpatched) release candidate versions of 7.4 (any 7.4-rc1+ is fine);
+- Install 7.4-rc1+ from your distro's testing branch.
+
+To compile a custom kernel on Fedora, you can use my [self-compile](/docs/self_compile.md) and [manual install](/docs/manual_install.md) guides. Alternatively, start making your own GitHub RPM releases, either by forking this repo and using my Actions script to make your own releases, or more simply by copying the corresponding YAML in your own repo and adapting its contents regarding where to take which patch file from.
+
+#### I need the smart connect/camera switch cover extra patches on 7.3+.
+
+If you can't wait for the 7.4 release around December 2026, you can keep compiling custom 7.3 kernels (see previous entry) or use the `KEY_UNKNOWN` workaround documented in [patches/extras/](/patches/extras/).
+
+#### What about the keyboard backlight controls extra patch?
+
+I will try to get the HID driver upstream for 7.5. In the meantime, you can compile a patched kernel using the latest WIP patch from [patches/extras/](/patches/extras/). Alternatively, you can look into compiling a dkms module (under Fedora it should be possible to configure an akmods module as well, which would automate e.g. MOK-SB signing). I won't look into covering this myself, as I'd rather invest my time and energy in the upstreaming process, to make it reach everyone OOTB. Still, if you get this working, feel free to share any relevant documentation or code (open an issue or a PR and I'll add a link to your repo).
+
+Either way, I will post updates here until the driver is merged upstream.
+
+*Note:* the WIP driver is already feature-complete and safe to use. The reason I have yet to submit (or to call it v1 instead of WIP) is simply that I'm working on improving the code quality; it's just a matter of being prepared for upstream review. The final version will also feature some accompanying QOL fixes for `ideapad-laptop` (again, not particularly relevant for the user, but quite meaningful for development purposes).
+
+----
+
+## Pre-7.3+ Readme
+
 > [!NOTE]
 > **The AW88399 HDA side codec driver has been [merged into the Linux kernel](https://github.com/torvalds/linux/commit/e5c91aac491def6ab3f90c4cc246e3fcb0f8f058) and [is now shipping starting with 7.3-rc1](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/diff/sound/hda/codecs/side-codecs/aw88399_hda.c?id=v7.3-rc1&id2=v7.2).** Once the 7.3 kernel reaches your distribution, you will only need the firmware file installed, no custom kernel required. Until then, this repository will continue to provide patched kernels for 7.1 and 7.2. See [the upstream tracking issue](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga/issues/65) and the [upstream folder](/upstream/) for historical info about the upstream submission.
 
