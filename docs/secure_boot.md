@@ -302,3 +302,4 @@ then enter a password, reboot, and enroll the certificate using that password in
 
 > [!NOTE]
 > If you don't dual boot Windows on the Legion Pro 7/7i, you can use [this script](https://github.com/nadimkobeissi/lenovo-bios-fwupd/) to update the BIOS from Linux. I haven't tested what happens in this case, but it's quite likely that the same re-enrollment process described above applies.
+> Also, until my PR with several compatibility improvements gets merged, you may want to take a look at [my fork of that project](https://github.com/marco-giunta/lenovo-bios-fwupd) as well.
