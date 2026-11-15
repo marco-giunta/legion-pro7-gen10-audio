@@ -14,15 +14,17 @@ The AW88399 HDA side codec driver is now included in any 7.3+ kernel that has en
 
 ### Firmware status
 
-> [!IMPORTANT]
-> **TL;DR:** The firmware binaries are not yet in the `linux-firmware` repository: for now, ***even on kernels 7.3+, users need to [install firmware manually](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga#step-1-install-the-aw88399-firmware).***
-
 > [!NOTE]
-> The required binaries have been submitted by Awinic on behalf of Lenovo to the linux-firmware mailing lists; however, the process is currently stuck (likely the email got lost due to a non-standard format, or the process of legal review of a new license is taking quite some time). On top of that, a new submission will be needed to include out-of-the-box support for the AFR10, but recently my contacts at Awinic have been unresponsive; therefore, even if distros start shipping the v1 firmware submission, AFR10 owners will at the very least need to copy/symlink the missing firmware (all supported Legions share the same file, it's just the file name that has to be changed based on the model).
-> I plan to make some noise on the firmware mailing lists ASAP to hopefully tackle whatever's blocking submission progression.
+> The firmware binaries have been [merged in the `linux-firmware` repository on 2026/11/14](https://gitlab.com/kernel-firmware/linux-firmware/-/commit/1cafb17a3ead182e37ab572964bee2a692a554c5).
+> However, the driver will only be able to make use of these files starting with kernel 7.4-rc1, and it may take some time for distributions to package them.
+> Therefore, for now, ***even on kernels 7.3+, users need to [install firmware manually](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga#step-1-install-the-aw88399-firmware).***
 
 > [!IMPORTANT]
 > Kernels 7.4 include breaking changes regarding how firmware is loaded. Even if you manually installed the firmware under 7.3, in order for audio to keep working under 7.4, you *must* follow [these instructions](https://github.com/nadimkobeissi/16iax10h-linux-sound-saga#step-1-install-the-aw88399-firmware), which have to be performed once (and realistically speaking, there will never be further such changes).
+> With that said, by the time stable 7.4 reaches mainstream distributions, hopefully the required firmware will already be packaged by your distro, meaning no further manual action would be required.
+
+> [!IMPORTANT]
+> The AFR10 model's IDs (17aa3934/5) were reported after the original firmware submission. Therefore, AFR10 owners will still have to install firmware manually for now (see above).
 
 ### The future of the AW88399 HDA side-codec driver and of this repo
 
